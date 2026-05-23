@@ -9,7 +9,9 @@
       "PowerShell(Stop-Process -Name \"node\" -Force -ErrorAction SilentlyContinue)",
       "Bash(npx vite *)",
       "Bash(npm install *)",
-      "Bash(xargs sed *)"
+      "Bash(xargs sed *)",
+      "Bash(node_modules/.bin/vite build *)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

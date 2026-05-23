@@ -235,7 +235,9 @@ export default function PrincipalDashboard() {
                   <tr key={c.id} className="hover:bg-slate-50">
                     <td className="p-4 font-medium text-slate-900">{c.name}</td>
                     <td className="p-4 text-slate-600">{c.section || '—'}</td>
-                    <td className="p-4 text-slate-600">{c.teachers?.name || 'Not assigned'}</td>
+                    <td className="p-4 text-slate-600">
+                      {c.teacher_name || teachers.find(t => t.id === c.teacher_id)?.name || <span className="text-slate-400 italic">Not assigned</span>}
+                    </td>
                     <td className="p-4 text-right font-bold text-blue-600">{students.filter(s => s.class_id === c.id).length}</td>
                   </tr>
                 ))}
@@ -252,18 +254,36 @@ export default function PrincipalDashboard() {
                 <tr>
                   <th className="text-left p-4 font-medium text-slate-600">Name</th>
                   <th className="text-left p-4 font-medium text-slate-600">Email</th>
+                  <th className="text-left p-4 font-medium text-slate-600">Assigned Classes</th>
                   <th className="text-right p-4 font-medium text-slate-600">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {teachers.map(t => (
-                  <tr key={t.id} className="hover:bg-slate-50">
-                    <td className="p-4 font-medium text-slate-900">{t.name}</td>
-                    <td className="p-4 text-slate-600">{t.email}</td>
-                    <td className="p-4 text-right"><span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">{t.status}</span></td>
-                  </tr>
-                ))}
-                {teachers.length === 0 && <tr><td colSpan={3} className="p-8 text-center text-slate-400">No teachers joined yet. Share your school code.</td></tr>}
+                {teachers.map(t => {
+                  const assignedClasses = classes.filter(c => c.teacher_id === t.id);
+                  return (
+                    <tr key={t.id} className="hover:bg-slate-50">
+                      <td className="p-4 font-medium text-slate-900">{t.name}</td>
+                      <td className="p-4 text-slate-600">{t.email}</td>
+                      <td className="p-4">
+                        {assignedClasses.length === 0
+                          ? <span className="text-slate-400 italic text-xs">None assigned</span>
+                          : <div className="flex flex-wrap gap-1">
+                              {assignedClasses.map(c => (
+                                <span key={c.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                                  {c.name}{c.section ? ` ${c.section}` : ''}
+                                </span>
+                              ))}
+                            </div>
+                        }
+                      </td>
+                      <td className="p-4 text-right">
+                        <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Active</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {teachers.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-400">No teachers joined yet. Share your school code.</td></tr>}
               </tbody>
             </table>
           </div>

@@ -106,6 +106,47 @@ export default function TeacherDashboard() {
     );
   }
 
+  // Teacher is in the school but no classes assigned yet
+  if (!loading && classes.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 font-sans">
+        <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <span className="font-extrabold text-slate-900 text-lg leading-tight">{teacher?.name || 'Teacher'}</span>
+              <p className="text-xs text-slate-500 leading-tight">{school?.name || '—'}</p>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600 transition-colors">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </header>
+        <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center">
+          <div className="w-20 h-20 bg-emerald-100 rounded-2xl flex items-center justify-center mb-5">
+            <BookOpen className="w-10 h-10 text-emerald-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">No Classes Assigned Yet</h2>
+          <p className="text-slate-500 mb-1 max-w-sm">
+            You haven't been assigned to any classes. Select the classes you teach to get started.
+          </p>
+          <p className="text-xs text-slate-400 mb-6">
+            Alternatively, ask your principal to assign you via Manage Classes.
+          </p>
+          <button
+            onClick={() => navigate(createPageUrl('SelectClasses'))}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-3 rounded-xl transition-colors flex items-center gap-2"
+          >
+            <BookOpen className="w-5 h-5" />
+            Select My Classes
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       {/* ── HEADER ── */}
