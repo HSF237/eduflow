@@ -2,12 +2,36 @@
   "name": "Class",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string", "description": "Reference to school" },
-    "name": { "type": "string", "description": "Class name e.g. Grade 5" },
-    "division": { "type": "string", "description": "Division e.g. A, B, C" },
-    "teacher_email": { "type": "string", "description": "Class teacher email" },
-    "parent_code": { "type": "string", "description": "Unique code for parents to access class information" },
-    "subjects": { "type": "array", "items": { "type": "string" } }
+    "school_id": {
+      "type": "string",
+      "description": "Reference to school"
+    },
+    "name": {
+      "type": "string",
+      "description": "Class name e.g. Grade 5"
+    },
+    "division": {
+      "type": "string",
+      "description": "Division e.g. A, B, C"
+    },
+    "teacher_email": {
+      "type": "string",
+      "description": "Class teacher email"
+    },
+    "parent_code": {
+      "type": "string",
+      "description": "Unique code for parents to access class information"
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
   },
-  "required": ["school_id", "name", "division"]
+  "required": [
+    "school_id",
+    "name",
+    "division"
+  ]
 }

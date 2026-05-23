@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { GraduationCap, Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
@@ -19,8 +19,12 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     try {
-      await base44.auth.login(formData.email, formData.password);
-      await finishLogin();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+      if (error) throw error;
+      await finishLogin(data.user);
     } catch (error) {
       console.error('Login failed:', error);
       alert('Invalid credentials. Please try again.');
@@ -31,20 +35,21 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
-      await base44.auth.loginWithGoogle();
-      await finishLogin();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
+      if (error) throw error;
     } catch (error) {
       console.error('Google login failed:', error);
     }
     setGoogleLoading(false);
   };
 
-  const finishLogin = async () => {
-    const user = await base44.auth.me();
-    if (!user.profile_completed) {
+  const finishLogin = async (user) => {
+    if (!user?.user_metadata?.profile_completed) {
       navigate(createPageUrl('RoleSelection'));
     } else {
-      const dashboard = user.user_role === 'principal' ? 'PrincipalDashboard' : 'TeacherDashboard';
+      const dashboard = user.user_metadata?.user_role === 'principal' ? 'PrincipalDashboard' : 'TeacherDashboard';
       navigate(createPageUrl(dashboard));
     }
   };

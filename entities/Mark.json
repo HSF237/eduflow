@@ -2,13 +2,34 @@
   "name": "Mark",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string" },
-    "exam_id": { "type": "string" },
-    "student_id": { "type": "string" },
-    "class_id": { "type": "string" },
-    "marks_obtained": { "type": "number" },
-    "remarks": { "type": "string" },
-    "marked_by": { "type": "string", "description": "Teacher email" }
+    "school_id": {
+      "type": "string"
+    },
+    "exam_id": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "marks_obtained": {
+      "type": "number"
+    },
+    "remarks": {
+      "type": "string"
+    },
+    "marked_by": {
+      "type": "string",
+      "description": "Teacher email"
+    }
   },
-  "required": ["school_id", "exam_id", "student_id", "class_id", "marks_obtained"]
+  "required": [
+    "school_id",
+    "exam_id",
+    "student_id",
+    "class_id",
+    "marks_obtained"
+  ]
 }

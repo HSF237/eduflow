@@ -2,24 +2,43 @@
   "name": "Teacher",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string" },
-    "email": { "type": "string" },
-    "name": { "type": "string" },
-    "phone": { "type": "string" },
+    "school_id": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
     "assigned_classes": {
       "type": "array",
-      "items": { "type": "string" },
+      "items": {
+        "type": "string"
+      },
       "description": "Array of class IDs assigned to this teacher"
     },
     "subjects": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "status": {
       "type": "string",
-      "enum": ["Active", "Inactive"],
+      "enum": [
+        "Active",
+        "Inactive"
+      ],
       "default": "Active"
     }
   },
-  "required": ["school_id", "email", "name"]
+  "required": [
+    "school_id",
+    "email",
+    "name"
+  ]
 }

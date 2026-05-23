@@ -2,22 +2,52 @@
   "name": "Exam",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string" },
-    "name": { "type": "string", "description": "Exam name e.g., Unit Test 1, Periodic Test" },
+    "school_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Exam name e.g., Unit Test 1, Periodic Test"
+    },
     "type": {
       "type": "string",
-      "enum": ["UT", "Periodic Test", "Half Yearly", "Annual", "Other"],
+      "enum": [
+        "UT",
+        "Periodic Test",
+        "Half Yearly",
+        "Annual",
+        "Other"
+      ],
       "default": "UT"
     },
-    "class_id": { "type": "string" },
-    "subject": { "type": "string" },
-    "max_marks": { "type": "number", "default": 100 },
-    "exam_date": { "type": "string", "format": "date" },
+    "class_id": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "max_marks": {
+      "type": "number",
+      "default": 100
+    },
+    "exam_date": {
+      "type": "string",
+      "format": "date"
+    },
     "status": {
       "type": "string",
-      "enum": ["Scheduled", "Completed"],
+      "enum": [
+        "Scheduled",
+        "Completed"
+      ],
       "default": "Scheduled"
     }
   },
-  "required": ["school_id", "name", "class_id", "subject", "max_marks"]
+  "required": [
+    "school_id",
+    "name",
+    "class_id",
+    "subject",
+    "max_marks"
+  ]
 }

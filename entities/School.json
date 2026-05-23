@@ -2,18 +2,41 @@
   "name": "School",
   "type": "object",
   "properties": {
-    "name": { "type": "string", "description": "School name" },
-    "code": { "type": "string", "description": "Unique join code for teachers" },
-    "address": { "type": "string" },
-    "phone": { "type": "string" },
-    "principal_email": { "type": "string", "description": "Email of the principal who created this school" },
+    "name": {
+      "type": "string",
+      "description": "School name"
+    },
+    "code": {
+      "type": "string",
+      "description": "Unique join code for teachers"
+    },
+    "address": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "principal_email": {
+      "type": "string",
+      "description": "Email of the principal who created this school"
+    },
     "settings": {
       "type": "object",
       "properties": {
-        "attendance_threshold": { "type": "number", "default": 75 },
-        "engagement_threshold": { "type": "number", "default": 50 }
+        "attendance_threshold": {
+          "type": "number",
+          "default": 75
+        },
+        "engagement_threshold": {
+          "type": "number",
+          "default": 50
+        }
       }
     }
   },
-  "required": ["name", "code", "principal_email"]
+  "required": [
+    "name",
+    "code",
+    "principal_email"
+  ]
 }

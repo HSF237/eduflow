@@ -2,22 +2,58 @@
   "name": "LeaveApplication",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string" },
-    "student_id": { "type": "string" },
-    "student_name": { "type": "string" },
-    "parent_email": { "type": "string" },
-    "class_id": { "type": "string" },
-    "from_date": { "type": "string", "format": "date" },
-    "to_date": { "type": "string", "format": "date" },
-    "reason": { "type": "string" },
+    "school_id": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "parent_email": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "from_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "to_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "reason": {
+      "type": "string"
+    },
     "status": {
       "type": "string",
-      "enum": ["Pending", "Approved", "Rejected"],
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
       "default": "Pending"
     },
-    "reviewed_by": { "type": "string", "description": "Teacher email who reviewed" },
-    "reviewed_date": { "type": "string", "format": "date-time" },
-    "review_remarks": { "type": "string" }
+    "reviewed_by": {
+      "type": "string",
+      "description": "Teacher email who reviewed"
+    },
+    "reviewed_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_remarks": {
+      "type": "string"
+    }
   },
-  "required": ["school_id", "student_id", "from_date", "to_date", "reason"]
+  "required": [
+    "school_id",
+    "student_id",
+    "from_date",
+    "to_date",
+    "reason"
+  ]
 }

@@ -2,21 +2,52 @@
   "name": "Notification",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string" },
+    "school_id": {
+      "type": "string"
+    },
     "type": {
       "type": "string",
-      "enum": ["attendance_submitted", "low_attendance", "low_engagement", "performance_drop", "general"]
+      "enum": [
+        "attendance_submitted",
+        "low_attendance",
+        "low_engagement",
+        "performance_drop",
+        "general"
+      ]
     },
-    "title": { "type": "string" },
-    "message": { "type": "string" },
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
     "for_role": {
       "type": "string",
-      "enum": ["principal", "teacher", "parent"]
+      "enum": [
+        "principal",
+        "teacher",
+        "parent"
+      ]
     },
-    "for_email": { "type": "string", "description": "Specific user email" },
-    "related_class_id": { "type": "string" },
-    "related_student_id": { "type": "string" },
-    "is_read": { "type": "boolean", "default": false }
+    "for_email": {
+      "type": "string",
+      "description": "Specific user email"
+    },
+    "related_class_id": {
+      "type": "string"
+    },
+    "related_student_id": {
+      "type": "string"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false
+    }
   },
-  "required": ["school_id", "type", "title", "message"]
+  "required": [
+    "school_id",
+    "type",
+    "title",
+    "message"
+  ]
 }

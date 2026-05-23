@@ -2,17 +2,40 @@
   "name": "Student",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string" },
-    "class_id": { "type": "string" },
-    "name": { "type": "string" },
-    "roll_number": { "type": "string" },
-    "admission_number": { "type": "string", "description": "Student admission number" },
-    "parent_name": { "type": "string", "description": "Parent or guardian name" },
-    "parent_email": { "type": "string" },
-    "date_of_birth": { "type": "string", "format": "date" },
+    "school_id": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "roll_number": {
+      "type": "string"
+    },
+    "admission_number": {
+      "type": "string",
+      "description": "Student admission number"
+    },
+    "parent_name": {
+      "type": "string",
+      "description": "Parent or guardian name"
+    },
+    "parent_email": {
+      "type": "string"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date"
+    },
     "gender": {
       "type": "string",
-      "enum": ["Male", "Female", "Other"]
+      "enum": [
+        "Male",
+        "Female",
+        "Other"
+      ]
     },
     "engagement_score": {
       "type": "number",
@@ -21,9 +44,17 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Active", "Inactive"],
+      "enum": [
+        "Active",
+        "Inactive"
+      ],
       "default": "Active"
     }
   },
-  "required": ["school_id", "class_id", "name", "roll_number"]
+  "required": [
+    "school_id",
+    "class_id",
+    "name",
+    "roll_number"
+  ]
 }

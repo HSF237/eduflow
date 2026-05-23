@@ -2,22 +2,51 @@
   "name": "Attendance",
   "type": "object",
   "properties": {
-    "school_id": { "type": "string" },
-    "class_id": { "type": "string" },
-    "student_id": { "type": "string" },
-    "date": { "type": "string", "format": "date" },
+    "school_id": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
     "status": {
       "type": "string",
-      "enum": ["Present", "Absent", "Late", "Half-day"],
+      "enum": [
+        "Present",
+        "Absent",
+        "Late",
+        "Half-day"
+      ],
       "default": "Present"
     },
-    "marked_by": { "type": "string", "description": "Teacher email who marked" },
+    "marked_by": {
+      "type": "string",
+      "description": "Teacher email who marked"
+    },
     "approval_status": {
       "type": "string",
-      "enum": ["Pending", "Approved", "Rejected"],
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
       "default": "Pending"
     },
-    "remarks": { "type": "string" }
+    "remarks": {
+      "type": "string"
+    }
   },
-  "required": ["school_id", "class_id", "student_id", "date", "status"]
+  "required": [
+    "school_id",
+    "class_id",
+    "student_id",
+    "date",
+    "status"
+  ]
 }
