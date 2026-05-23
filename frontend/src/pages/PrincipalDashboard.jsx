@@ -1,217 +1,357 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users, UserPlus, ClipboardCheck, Settings, 
-  Plus, Bell, LogOut, Copy, CheckCircle, 
-  FileText, BookOpen, GraduationCap, X, ChevronRight, Loader2
+import { useAuth } from '@/hooks/AuthContext';
+import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, generateCode, createClass, createStudent } from '@/lib/db';
+import { createPageUrl } from '@/utils';
+import {
+  Users, BookOpen, UserCog, Clock, Plus, UserPlus, CheckCircle,
+  AlertTriangle, BarChart2, ClipboardList, GraduationCap, Bell,
+  Settings, LogOut, Copy, Check, X, Loader2
 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 
-export default function PrincipalDashboard({ profile }) {
+export default function PrincipalDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const { user: authUser, isLoadingAuth, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [school, setSchool] = useState(null);
+  const [user, setUser] = useState(null);
   const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0, pending: 0 });
   const [classes, setClasses] = useState([]);
   const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [todayAttendance, setTodayAttendance] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [copied, setCopied] = useState(false);
   const [showAddClass, setShowAddClass] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [classForm, setClassForm] = useState({ name: '', section: '' });
+  const [studentForm, setStudentForm] = useState({ name: '', roll_number: '', admission_number: '', class_id: '', parent_name: '' });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (!isLoadingAuth) load(authUser);
+  }, [isLoadingAuth, authUser]);
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      const user = await base44.auth.me();
-      const schoolId = user.school_id;
+  const load = async (user) => {
+    if (!user) { navigate('/login?role=principal'); return; }
+    setUser(user);
 
-      const [allClasses, allStudents, allTeachers] = await Promise.all([
-        base44.entities.Class.filter({ school_id: schoolId }),
-        base44.entities.Student.filter({ school_id: schoolId }),
-        base44.entities.Teacher.filter({ school_id: schoolId })
-      ]);
+    const schoolData = await getSchoolByPrincipal(user.uid);
+    if (!schoolData) { navigate(createPageUrl('SetupSchool')); return; }
+    setSchool(schoolData);
 
-      setClasses(allClasses);
-      setStudents(allStudents);
-      setStats({
-        students: allStudents.length,
-        classes: allClasses.length,
-        teachers: allTeachers.length,
-        pending: 0
-      });
-    } catch (error) {
-      console.error('Error fetching principal data:', error);
-    }
+    const [cls, stu, tea, att] = await Promise.all([
+      getClasses(schoolData.id),
+      getStudents(schoolData.id),
+      getTeachers(schoolData.id),
+      getTodayAttendanceSummary(schoolData.id),
+    ]);
+    setClasses(cls); setStudents(stu); setTeachers(tea); setTodayAttendance(att);
+    setStats({ students: stu.length, classes: cls.length, teachers: tea.length, pending: 0 });
     setLoading(false);
   };
 
-  const handleLogout = async () => {
-    await base44.auth.logout();
-    navigate('/');
+  const handleLogout = () => logout();
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(school.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  const handleAddClass = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try {
+      await createClass({ ...classForm, school_id: school.id, parent_code: generateCode() });
+      setShowAddClass(false); setClassForm({ name: '', section: '' }); load();
+    } catch (err) { alert('Error creating class'); }
+    setSaving(false);
+  };
+
+  const handleAddStudent = async (e) => {
+    e.preventDefault(); setSaving(true);
+    try {
+      await createStudent({ ...studentForm, school_id: school.id });
+      setShowAddStudent(false); setStudentForm({ name: '', roll_number: '', admission_number: '', class_id: '', parent_name: '' }); load();
+    } catch (err) { alert('Error adding student'); }
+    setSaving(false);
+  };
+
+  const presentToday = todayAttendance.filter(a => a.status === 'present').length;
+  const attendancePct = stats.students > 0 ? Math.round((presentToday / stats.students) * 100) : 0;
+
+  const atRiskStudents = students.filter(s => {
+    const classAttendance = todayAttendance.filter(a => a.student_id === s.id);
+    return classAttendance.length === 0;
+  }).slice(0, 5);
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-8 py-4 flex justify-between items-center">
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-3 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg">
-            <GraduationCap size={24} />
+          <div className="bg-blue-600 w-9 h-9 rounded-lg flex items-center justify-center text-white">
+            <GraduationCap size={20} />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">{profile?.name || 'Administrator'}</h1>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Command Center</p>
+            <p className="font-bold text-slate-900 leading-tight">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Principal'}</p>
+            <p className="text-xs text-slate-500">Principal Dashboard</p>
           </div>
         </div>
-
-        <div className="flex items-center gap-4">
-          <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors"><Bell size={20} /></button>
-          <button onClick={handleLogout} className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-bold border border-red-100 hover:bg-red-100 flex items-center gap-2">
-            <LogOut size={18} /> Logout
-          </button>
+        <div className="flex items-center gap-3">
+          {school && (
+            <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">
+              <span className="text-slate-500 text-xs">Code:</span>
+              <span className="font-bold text-blue-600 tracking-widest">{school.code}</span>
+              {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-slate-400" />}
+            </button>
+          )}
+          <button onClick={() => navigate(createPageUrl('Notifications'))} className="p-2 text-slate-400 hover:text-slate-600"><Bell size={20} /></button>
+          <button onClick={() => navigate(createPageUrl('PrincipalSettings'))} className="p-2 text-slate-400 hover:text-slate-600"><Settings size={20} /></button>
+          <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-slate-600"><LogOut size={20} /></button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-8 mt-10">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-          <StatsCard title="Total Students" value={stats.students} icon={<Users size={24}/>} color="text-blue-600 bg-blue-50" />
-          <StatsCard title="Active Classes" value={stats.classes} icon={<BookOpen size={24}/>} color="text-emerald-600 bg-emerald-50" />
-          <StatsCard title="Total Teachers" value={stats.teachers} icon={<Users size={24}/>} color="text-purple-600 bg-purple-50" />
-          <StatsCard title="Alerts" value={stats.pending} icon={<AlertTriangle size={24}/>} color="text-orange-600 bg-orange-50" />
+      <div className="max-w-6xl mx-auto px-6 py-6">
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard title="Total Students" value={stats.students} icon={<Users size={22} />} color="bg-blue-500" />
+          <StatCard title="Total Classes" value={stats.classes} icon={<BookOpen size={22} />} color="bg-green-500" />
+          <StatCard title="Teachers" value={stats.teachers} icon={<UserCog size={22} />} color="bg-purple-500" />
+          <StatCard title="Pending Approval" value={stats.pending} icon={<Clock size={22} />} color="bg-orange-500" />
         </div>
 
-        <div className="flex gap-4 mb-10">
-           <button onClick={() => setShowAddClass(true)} className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-8 rounded-xl font-bold uppercase tracking-wider text-xs transition-all shadow-lg shadow-blue-500/10">
-              <Plus size={18} className="inline mr-2" /> Create Class
-           </button>
-           <button onClick={() => setShowAddStudent(true)} className="bg-white border border-slate-200 text-slate-700 h-12 px-8 rounded-xl font-bold uppercase tracking-wider text-xs hover:bg-slate-50 transition-all">
-              <UserPlus size={18} className="inline mr-2" /> Onboard Student
-           </button>
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button onClick={() => setShowAddClass(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            <Plus size={16} /> Add Class
+          </button>
+          <button onClick={() => setShowAddStudent(true)} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <UserPlus size={16} /> Add Student
+          </button>
+          <button onClick={() => navigate(createPageUrl('ReviewLeave'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <CheckCircle size={16} /> Review Leave
+          </button>
+          <button onClick={() => navigate(createPageUrl('UnapprovedAbsences'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <AlertTriangle size={16} /> Unapproved Absences
+          </button>
+          <button onClick={() => navigate(createPageUrl('AttendanceApproval'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <ClipboardList size={16} /> Review Attendance
+          </button>
+          <button onClick={() => navigate(createPageUrl('Reports'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <BarChart2 size={16} /> View Reports
+          </button>
+          <button onClick={() => navigate(createPageUrl('ManageExams'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <ClipboardList size={16} /> Manage Exams
+          </button>
         </div>
 
-        <div className="flex gap-1 mb-8 bg-slate-200/50 p-1 rounded-xl w-fit">
-           {['Overview', 'Classes', 'Students'].map(t => (
-             <button 
-              key={t}
-              onClick={() => setActiveTab(t.toLowerCase())}
-              className={`px-8 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === t.toLowerCase() ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               {t}
-             </button>
-           ))}
+        {/* Tabs */}
+        <div className="flex gap-1 border-b border-slate-200 mb-6">
+          {['Overview', 'Classes', 'Teachers', 'Notifications'].map(t => (
+            <button key={t} onClick={() => setActiveTab(t.toLowerCase())}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t.toLowerCase() ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              {t}
+            </button>
+          ))}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-          {activeTab === 'classes' && (
-             <table className="w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 text-[11px] font-bold uppercase tracking-widest">
-                  <tr>
-                     <th className="p-5 pl-8">Class Name</th>
-                     <th className="p-5">Department</th>
-                     <th className="p-5 text-right pr-8">Students</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {classes.map(c => (
-                    <tr key={c.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-5 pl-8 font-bold text-slate-900">{c.name}</td>
-                      <td className="p-5 text-slate-500">{c.section || 'General'}</td>
-                      <td className="p-5 text-right pr-8 font-bold text-blue-600">{students.filter(s => s.class_id === c.id).length}</td>
-                    </tr>
-                  ))}
-                  {classes.length === 0 && (
-                    <tr><td colSpan="3" className="p-10 text-center text-slate-400 italic">No classes registered.</td></tr>
-                  )}
-                </tbody>
-             </table>
-          )}
-
-          {activeTab === 'students' && (
-             <table className="w-full text-left">
-                <thead className="bg-slate-50 border-b border-slate-100 text-slate-400 text-[11px] font-bold uppercase tracking-widest">
-                  <tr>
-                     <th className="p-5 pl-8">Full Name</th>
-                     <th className="p-5">Assigned Class</th>
-                     <th className="p-5 text-right pr-8">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                   {students.map(s => (
-                     <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-5 pl-8 font-bold text-slate-900">{s.name}</td>
-                        <td className="p-5 text-slate-500 text-sm">{classes.find(c => c.id === s.class_id)?.name || 'Unassigned'}</td>
-                        <td className="p-5 text-right pr-8">
-                           <span className="px-2 py-1 bg-green-50 text-green-600 text-[10px] uppercase font-bold rounded">Active</span>
-                        </td>
-                     </tr>
-                   ))}
-                   {students.length === 0 && (
-                    <tr><td colSpan="3" className="p-10 text-center text-slate-400 italic">No student records found.</td></tr>
-                   )}
-                </tbody>
-             </table>
-          )}
-        </div>
-      </main>
-
-      {/* MODAL */}
-      {showAddClass && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 space-y-6">
-            <div className="flex justify-between items-center">
-                <h3 className="text-xl font-bold">Register New Class</h3>
-                <button onClick={() => setShowAddClass(false)} className="text-slate-400 hover:text-slate-900"><X size={24}/></button>
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Today's Attendance */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle size={18} className="text-green-500" />
+                <h3 className="font-semibold text-slate-800">Today's Attendance</h3>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="relative w-20 h-20">
+                  <svg viewBox="0 0 36 36" className="w-20 h-20 -rotate-90">
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e2e8f0" strokeWidth="3" />
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke={attendancePct > 0 ? '#22c55e' : '#ef4444'}
+                      strokeWidth="3" strokeDasharray={`${attendancePct} ${100 - attendancePct}`} strokeLinecap="round" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg font-bold text-slate-800">{attendancePct}%</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-slate-600">{presentToday} of {stats.students} students present</p>
+                  <p className="text-xs text-slate-400 mt-1">Updated just now</p>
+                </div>
+              </div>
             </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              const form = e.currentTarget;
-              const data = new FormData(form);
-              try {
-                await base44.entities.Class.create({
-                  name: String(data.get('name')),
-                  section: String(data.get('section')),
-                  school_id: profile.school_id
-                });
-                fetchDashboardData();
-                setShowAddClass(false);
-              } catch (err) { alert('Creation Error'); }
-            }} className="space-y-4">
-               <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Class Identity (e.g. 10-A)</label>
-                  <input name="name" required className="w-full h-11 border border-slate-200 rounded-lg px-4" />
-               </div>
-               <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">Department</label>
-                  <input name="section" className="w-full h-11 border border-slate-200 rounded-lg px-4" />
-               </div>
-               <button type="submit" className="w-full bg-blue-600 text-white h-12 rounded-lg font-bold uppercase tracking-widest text-xs">Deploy Unit</button>
-            </form>
+
+            {/* At-Risk Students */}
+            <div className="bg-white rounded-xl border border-slate-200 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertTriangle size={18} className="text-orange-500" />
+                <h3 className="font-semibold text-slate-800">At-Risk Students</h3>
+              </div>
+              {atRiskStudents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-slate-400">
+                  <CheckCircle size={32} className="text-green-400 mb-2" />
+                  <p>No at-risk students!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {atRiskStudents.map(s => (
+                    <div key={s.id} className="flex items-center justify-between py-2 border-b border-slate-100">
+                      <span className="text-sm font-medium text-slate-700">{s.name}</span>
+                      <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">At Risk</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === 'classes' && (
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="text-left p-4 font-medium text-slate-600">Class Name</th>
+                  <th className="text-left p-4 font-medium text-slate-600">Section</th>
+                  <th className="text-left p-4 font-medium text-slate-600">Teacher</th>
+                  <th className="text-right p-4 font-medium text-slate-600">Students</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {classes.map(c => (
+                  <tr key={c.id} className="hover:bg-slate-50">
+                    <td className="p-4 font-medium text-slate-900">{c.name}</td>
+                    <td className="p-4 text-slate-600">{c.section || '—'}</td>
+                    <td className="p-4 text-slate-600">{c.teachers?.name || 'Not assigned'}</td>
+                    <td className="p-4 text-right font-bold text-blue-600">{students.filter(s => s.class_id === c.id).length}</td>
+                  </tr>
+                ))}
+                {classes.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-400">No classes yet. Add your first class.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'teachers' && (
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="text-left p-4 font-medium text-slate-600">Name</th>
+                  <th className="text-left p-4 font-medium text-slate-600">Email</th>
+                  <th className="text-right p-4 font-medium text-slate-600">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {teachers.map(t => (
+                  <tr key={t.id} className="hover:bg-slate-50">
+                    <td className="p-4 font-medium text-slate-900">{t.name}</td>
+                    <td className="p-4 text-slate-600">{t.email}</td>
+                    <td className="p-4 text-right"><span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">{t.status}</span></td>
+                  </tr>
+                ))}
+                {teachers.length === 0 && <tr><td colSpan={3} className="p-8 text-center text-slate-400">No teachers joined yet. Share your school code.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {activeTab === 'notifications' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center text-slate-400">
+            <Bell size={32} className="mx-auto mb-2 text-slate-300" />
+            <p>No notifications yet.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add Class Modal */}
+      {showAddClass && (
+        <Modal title="Add Class" onClose={() => setShowAddClass(false)}>
+          <form onSubmit={handleAddClass} className="space-y-4">
+            <FormField label="Class Name" placeholder="e.g. Class 8" value={classForm.name} onChange={v => setClassForm({ ...classForm, name: v })} required />
+            <FormField label="Division / Section" placeholder="e.g. A" value={classForm.section} onChange={v => setClassForm({ ...classForm, section: v })} />
+            <ModalButtons onCancel={() => setShowAddClass(false)} saving={saving} label="Add Class" />
+          </form>
+        </Modal>
+      )}
+
+      {/* Add Student Modal */}
+      {showAddStudent && (
+        <Modal title="Add Student" onClose={() => setShowAddStudent(false)}>
+          <form onSubmit={handleAddStudent} className="space-y-4">
+            <FormField label="Student Name" placeholder="Full name" value={studentForm.name} onChange={v => setStudentForm({ ...studentForm, name: v })} required />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Roll No" placeholder="e.g. 001" value={studentForm.roll_number} onChange={v => setStudentForm({ ...studentForm, roll_number: v })} />
+              <FormField label="Adm No" placeholder="e.g. 2024001" value={studentForm.admission_number} onChange={v => setStudentForm({ ...studentForm, admission_number: v })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Class</label>
+              <select className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={studentForm.class_id} onChange={e => setStudentForm({ ...studentForm, class_id: e.target.value })}>
+                <option value="">Select class</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name} {c.section ? `- ${c.section}` : ''}</option>)}
+              </select>
+            </div>
+            <FormField label="Parent Name" placeholder="Parent / Guardian name" value={studentForm.parent_name} onChange={v => setStudentForm({ ...studentForm, parent_name: v })} />
+            <ModalButtons onCancel={() => setShowAddStudent(false)} saving={saving} label="Add Student" />
+          </form>
+        </Modal>
       )}
     </div>
   );
 }
 
-function StatsCard({ title, value, icon, color }) {
+function StatCard({ title, value, icon, color }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between p-6">
-       <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{title}</p>
-          <p className="text-3xl font-bold text-slate-900">{value}</p>
-       </div>
-       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
-          {icon}
-       </div>
+    <div className={`${color} rounded-xl p-4 text-white flex justify-between items-center`}>
+      <div>
+        <p className="text-white/80 text-xs mb-1">{title}</p>
+        <p className="text-3xl font-bold">{value}</p>
+      </div>
+      <div className="opacity-80">{icon}</div>
+    </div>
+  );
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+        <div className="flex justify-between items-center p-5 border-b border-slate-100">
+          <h3 className="font-bold text-slate-900">{title}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function FormField({ label, placeholder, value, onChange, required }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+      <input className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} required={required} />
+    </div>
+  );
+}
+
+function ModalButtons({ onCancel, saving, label }) {
+  return (
+    <div className="flex gap-3 pt-2">
+      <button type="button" onClick={onCancel} className="flex-1 border border-slate-300 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
+      <button type="submit" disabled={saving} className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+        {saving ? <Loader2 size={16} className="animate-spin mx-auto" /> : label}
+      </button>
     </div>
   );
 }

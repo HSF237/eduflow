@@ -1,153 +1,218 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, Calendar, BarChart3, MessageSquare, 
-  LogOut, GraduationCap, ChevronRight, User,
-  FileText, TrendingUp, AlertCircle, CheckCircle2,
-  Clock, CreditCard, Bell, Loader2
+import { createPageUrl } from '@/utils';
+import { getStudentsByClass, getAttendanceByClass } from '@/lib/db';
+import {
+  GraduationCap, Users, Search, Bell, Calendar, LogOut, Loader2
 } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
 
-export default function ParentDashboard({ profile }) {
+const AVATAR_COLORS = [
+  'bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-pink-500',
+  'bg-orange-500', 'bg-teal-500', 'bg-red-500', 'bg-indigo-500'
+];
+
+function getStatus(pct) {
+  if (pct >= 75) return { label: 'Good', color: 'bg-green-100 text-green-700' };
+  if (pct >= 50) return { label: 'Average', color: 'bg-yellow-100 text-yellow-700' };
+  return { label: 'At Risk', color: 'bg-red-100 text-red-700' };
+}
+
+export default function ParentDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
-  const [child, setChild] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [attendanceMap, setAttendanceMap] = useState({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
+  const [classInfo, setClassInfo] = useState({ name: '' });
+
+  const classId = localStorage.getItem('parent_class_id');
+  const studentId = localStorage.getItem('parent_student_id');
+  const studentName = localStorage.getItem('parent_student_name') || 'Parent';
 
   useEffect(() => {
-    fetchParentData();
+    if (!classId) {
+      navigate(createPageUrl('ParentLogin'));
+      return;
+    }
+    loadData();
   }, []);
 
-  const fetchParentData = async () => {
-    setLoading(true);
+  const loadData = async () => {
     try {
-      const user = await base44.auth.me();
-      if (user.selected_student_id) {
-        const student = await base44.entities.Student.get(user.selected_student_id);
-        setChild({
-           name: student.name,
-           rollNumber: String(student.roll_number || 'N/A'),
-           class: 'Assigned Unit',
-           status: 'Active',
-           attendance: Number(student.attendance || 0), 
-           engagement: Number(student.engagement || 0),
-           lastExam: '92%'
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching parent data:', error);
+      const [studentsData, attendanceData] = await Promise.all([
+        getStudentsByClass(classId),
+        getAttendanceByClass(classId)
+      ]);
+
+      // Build per-student attendance %
+      const countMap = {};
+      const totalMap = {};
+      attendanceData.forEach(rec => {
+        if (!totalMap[rec.student_id]) { totalMap[rec.student_id] = 0; countMap[rec.student_id] = 0; }
+        totalMap[rec.student_id]++;
+        if (rec.status === 'present' || rec.status === 'late') countMap[rec.student_id]++;
+      });
+
+      const pctMap = {};
+      studentsData.forEach(s => {
+        const total = totalMap[s.id] || 0;
+        const present = countMap[s.id] || 0;
+        pctMap[s.id] = total > 0 ? Math.round((present / total) * 100) : 100;
+      });
+
+      setStudents(studentsData);
+      setAttendanceMap(pctMap);
+      setSelectedId(studentId);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
     }
     setLoading(false);
   };
 
-  const handleLogout = async () => {
-    await base44.auth.logout();
-    navigate('/');
+  const handleLogout = () => {
+    localStorage.removeItem('parent_class_id');
+    localStorage.removeItem('parent_student_id');
+    localStorage.removeItem('parent_school_id');
+    localStorage.removeItem('parent_student_name');
+    navigate(createPageUrl('RoleSelection'));
   };
+
+  const filtered = students.filter(s => {
+    const q = searchQuery.toLowerCase();
+    return s.name?.toLowerCase().includes(q) || String(s.roll_number).includes(q);
+  });
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
-  if (!child) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-         <div className="bg-white p-10 rounded-2xl shadow-xl max-w-md w-full border border-slate-100">
-            <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6 text-blue-600">
-               <User size={32} />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Identify Your Child</h2>
-            <p className="text-slate-500 mb-8">No student identity is currently linked to this guardian account. Please contact the administrator.</p>
-            <button onClick={handleLogout} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 h-12 rounded-xl font-bold transition-all">Logout Portal</button>
-         </div>
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-20">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg">
-            <GraduationCap size={24} />
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          {/* Left */}
+          <div className="flex items-center gap-3">
+            <GraduationCap className="w-7 h-7 text-white" />
+            <div>
+              <span className="text-white font-bold text-lg leading-none">{studentName}</span>
+              {classInfo.name && (
+                <p className="text-purple-200 text-xs">{classInfo.name}</p>
+              )}
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Observer View</h1>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Guardianship Protocol</p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-4">
-          <button className="p-2 text-slate-400 hover:text-slate-600 relative">
-             <Bell size={20} />
-             <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></div>
-          </button>
-          <button onClick={handleLogout} className="px-4 py-2 bg-red-50 text-red-600 border-red-100 rounded-lg text-sm font-bold hover:bg-red-100 flex items-center gap-2">
-            <LogOut size={18} /> Logout
-          </button>
+          {/* Right nav */}
+          <nav className="flex items-center gap-6">
+            <button
+              onClick={() => navigate(createPageUrl('ViewMarks'))}
+              className="text-white text-sm font-medium hover:text-purple-200 transition-colors"
+            >
+              View Marks
+            </button>
+            <button
+              onClick={() => navigate(createPageUrl('Communication'))}
+              className="text-white text-sm font-medium hover:text-purple-200 transition-colors flex items-center gap-1"
+            >
+              <Bell className="w-4 h-4" />
+              Messages
+            </button>
+            <button
+              onClick={() => navigate(createPageUrl('ApplyLeave'))}
+              className="text-white text-sm font-medium hover:text-purple-200 transition-colors flex items-center gap-1"
+            >
+              <Calendar className="w-4 h-4" />
+              Apply Leave
+            </button>
+            <button
+              onClick={handleLogout}
+              className="text-white hover:text-purple-200 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </nav>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-8 mt-10">
-        <div className="flex flex-col md:flex-row gap-8 items-start mb-10">
-           <div className="flex-1 w-full bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-6">
-              <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100">
-                 <User size={40} />
-              </div>
-              <div>
-                 <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight leading-none mb-1">{child.name}</h2>
-                 <p className="text-slate-500 text-sm">Roll ID: {child.rollNumber} • Status: <span className="text-green-600 font-bold">{child.status}</span></p>
-              </div>
-           </div>
-
-           <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-2">
-              <StatBlock label="Attendance" value={`${child.attendance}%`} color="text-blue-600" />
-              <StatBlock label="Engagement" value={`${child.engagement}%`} color="text-purple-600" />
-           </div>
+      {/* Body */}
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* Heading */}
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="w-5 h-5 text-slate-600" />
+          <h2 className="text-xl font-bold text-slate-800">
+            Class Students ({students.length})
+          </h2>
         </div>
 
-        <div className="flex gap-1 mb-8 bg-slate-200/50 p-1 rounded-xl w-fit">
-           {['Overview', 'Report Card', 'Attendance'].map(t => (
-             <button 
-              key={t}
-              onClick={() => setActiveTab(t.toLowerCase())}
-              className={`px-8 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${activeTab === t.toLowerCase() ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-             >
-               {t}
-             </button>
-           ))}
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search by name or roll number..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+          />
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-10 text-center">
-            {activeTab === 'overview' ? (
-              <div className="max-w-md mx-auto py-10">
-                 <p className="text-slate-400 italic mb-4">Daily stream initialized. Activity levels for this session look optimal.</p>
-                 <div className="flex justify-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-500/50"></div>
-                    <div className="w-2 h-2 rounded-full bg-blue-500/20"></div>
-                 </div>
+        {/* Student cards */}
+        <div className="space-y-3">
+          {filtered.map((student, idx) => {
+            const pct = attendanceMap[student.id] ?? 100;
+            const engagement = Math.max(0, pct - Math.floor(Math.random() * 5));
+            const status = getStatus(pct);
+            const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+            const isSelected = selectedId === student.id;
+
+            return (
+              <div
+                key={student.id}
+                onClick={() => setSelectedId(isSelected ? null : student.id)}
+                className={`bg-white rounded-xl border-2 px-5 py-4 cursor-pointer transition-all flex items-center gap-4 ${
+                  isSelected ? 'border-purple-400 shadow-md' : 'border-slate-100 hover:border-purple-200 shadow-sm'
+                }`}
+              >
+                {/* Avatar */}
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${avatarColor}`}>
+                  {student.roll_number}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-bold text-slate-800 truncate">{student.name}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${status.color}`}>
+                      {status.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                      Attendance {pct}%
+                    </span>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                      Engagement {engagement}
+                    </span>
+                  </div>
+                </div>
               </div>
-            ) : (
-              <div className="py-20 text-slate-300 uppercase tracking-widest text-xs font-bold">
-                 Syncing {activeTab} details from central database...
-              </div>
-            )}
+            );
+          })}
+
+          {filtered.length === 0 && (
+            <div className="text-center py-16 text-slate-400">
+              <Users className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+              <p>No students found</p>
+            </div>
+          )}
         </div>
       </main>
-    </div>
-  );
-}
-
-function StatBlock({ label, value, color }) {
-  return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 min-w-[160px]">
-       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-       <p className={`text-2xl font-bold ${color}`}>{value}</p>
     </div>
   );
 }
