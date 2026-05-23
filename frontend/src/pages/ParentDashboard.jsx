@@ -1,214 +1,243 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { getStudentsByClass, getAttendanceByClass } from '@/lib/db';
+import { getStudentsByClass, getAttendanceByClass, getMessages } from '@/lib/db';
 import {
-  GraduationCap, Users, Search, Bell, Calendar, LogOut, Loader2
+  GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
+  TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle
 } from 'lucide-react';
 
-const AVATAR_COLORS = [
-  'bg-purple-500', 'bg-blue-500', 'bg-green-500', 'bg-pink-500',
-  'bg-orange-500', 'bg-teal-500', 'bg-red-500', 'bg-indigo-500'
-];
-
-function getStatus(pct) {
-  if (pct >= 75) return { label: 'Good', color: 'bg-green-100 text-green-700' };
-  if (pct >= 50) return { label: 'Average', color: 'bg-yellow-100 text-yellow-700' };
-  return { label: 'At Risk', color: 'bg-red-100 text-red-700' };
+function StatCard({ icon: Icon, label, value, color }) {
+  return (
+    <div className={`${color} rounded-2xl p-4 text-white shadow-sm`}>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium opacity-90">{label}</span>
+        <Icon className="w-5 h-5 opacity-80" />
+      </div>
+      <p className="text-3xl font-extrabold">{value}</p>
+    </div>
+  );
 }
 
 export default function ParentDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [students, setStudents] = useState([]);
-  const [attendanceMap, setAttendanceMap] = useState({});
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedId, setSelectedId] = useState(null);
-  const [classInfo, setClassInfo] = useState({ name: '' });
+  const [student, setStudent] = useState(null);
+  const [attendancePct, setAttendancePct] = useState(null);
+  const [presentCount, setPresentCount] = useState(0);
+  const [absentCount, setAbsentCount] = useState(0);
+  const [lateCount, setLateCount] = useState(0);
+  const [recentRecords, setRecentRecords] = useState([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
-  const classId = localStorage.getItem('parent_class_id');
   const studentId = localStorage.getItem('parent_student_id');
-  const studentName = localStorage.getItem('parent_student_name') || 'Parent';
+  const studentName = localStorage.getItem('parent_student_name') || 'Student';
+  const classId = localStorage.getItem('parent_class_id');
 
   useEffect(() => {
-    if (!classId) {
-      navigate(createPageUrl('ParentLogin'));
-      return;
-    }
+    if (!studentId) { navigate(createPageUrl('ParentLogin')); return; }
     loadData();
   }, []);
 
   const loadData = async () => {
     try {
-      const [studentsData, attendanceData] = await Promise.all([
-        getStudentsByClass(classId),
-        getAttendanceByClass(classId)
+      const [students, attendance, messages] = await Promise.all([
+        classId ? getStudentsByClass(classId) : Promise.resolve([]),
+        classId ? getAttendanceByClass(classId) : Promise.resolve([]),
+        getMessages(studentId),
       ]);
 
-      // Build per-student attendance %
-      const countMap = {};
-      const totalMap = {};
-      attendanceData.forEach(rec => {
-        if (!totalMap[rec.student_id]) { totalMap[rec.student_id] = 0; countMap[rec.student_id] = 0; }
-        totalMap[rec.student_id]++;
-        if (rec.status === 'present' || rec.status === 'late') countMap[rec.student_id]++;
-      });
+      // Find this student
+      const me = students.find(s => s.id === studentId);
+      setStudent(me || { name: studentName });
 
-      const pctMap = {};
-      studentsData.forEach(s => {
-        const total = totalMap[s.id] || 0;
-        const present = countMap[s.id] || 0;
-        pctMap[s.id] = total > 0 ? Math.round((present / total) * 100) : 100;
-      });
+      // Attendance stats for this student only
+      const myAtt = attendance.filter(r => r.student_id === studentId);
+      const present = myAtt.filter(r => ['present', 'Present'].includes(r.status)).length;
+      const absent = myAtt.filter(r => ['absent', 'Absent'].includes(r.status)).length;
+      const late = myAtt.filter(r => ['late', 'Late'].includes(r.status)).length;
+      const total = myAtt.length;
 
-      setStudents(studentsData);
-      setAttendanceMap(pctMap);
-      setSelectedId(studentId);
+      setPresentCount(present);
+      setAbsentCount(absent);
+      setLateCount(late);
+      setAttendancePct(total > 0 ? Math.round(((present + late) / total) * 100) : null);
+
+      // Last 7 attendance records
+      const sorted = [...myAtt].sort((a, b) => (b.date > a.date ? 1 : -1));
+      setRecentRecords(sorted.slice(0, 7));
+
+      // Unread teacher messages
+      const lastRead = parseInt(localStorage.getItem(`msg_read_${studentId}`) || '0');
+      const unread = messages.filter(m => {
+        if (m.sender_type !== 'teacher') return false;
+        const ms = m.created_at?.toMillis?.() ?? (m.created_at?.seconds ? m.created_at.seconds * 1000 : 0);
+        return ms > lastRead;
+      }).length;
+      setUnreadMessages(unread);
     } catch (err) {
-      console.error('Error loading dashboard data:', err);
+      console.error('Error loading parent dashboard:', err);
     }
     setLoading(false);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('parent_class_id');
-    localStorage.removeItem('parent_student_id');
-    localStorage.removeItem('parent_school_id');
-    localStorage.removeItem('parent_student_name');
+    ['parent_student_id', 'parent_student_name', 'parent_class_id', 'parent_school_id']
+      .forEach(k => localStorage.removeItem(k));
     navigate(createPageUrl('RoleSelection'));
   };
 
-  const filtered = students.filter(s => {
-    const q = searchQuery.toLowerCase();
-    return s.name?.toLowerCase().includes(q) || String(s.roll_number).includes(q);
-  });
+  const getStatusColor = (pct) => {
+    if (pct === null) return 'text-slate-500';
+    if (pct >= 75) return 'text-green-600';
+    if (pct >= 50) return 'text-yellow-600';
+    return 'text-red-600';
+  };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-      </div>
-    );
-  }
+  const getStatusLabel = (pct) => {
+    if (pct === null) return 'No data';
+    if (pct >= 75) return 'Good Standing';
+    if (pct >= 50) return 'Needs Improvement';
+    return 'At Risk';
+  };
+
+  const formatDate = (d) => {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' });
+  };
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-gradient-to-r from-purple-600 to-pink-500 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          {/* Left */}
-          <div className="flex items-center gap-3">
-            <GraduationCap className="w-7 h-7 text-white" />
-            <div>
-              <span className="text-white font-bold text-lg leading-none">{studentName}</span>
-              {classInfo.name && (
-                <p className="text-purple-200 text-xs">{classInfo.name}</p>
-              )}
+      <header className="bg-gradient-to-r from-purple-600 to-pink-500 px-4 py-3">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <GraduationCap className="w-6 h-6 text-white shrink-0" />
+            <div className="min-w-0">
+              <p className="text-white font-bold text-base leading-tight truncate">{studentName}</p>
+              <p className="text-purple-200 text-xs">Parent Dashboard</p>
             </div>
           </div>
-
-          {/* Right nav */}
-          <nav className="flex items-center gap-6">
-            <button
-              onClick={() => navigate(createPageUrl('ViewMarks'))}
-              className="text-white text-sm font-medium hover:text-purple-200 transition-colors"
-            >
-              View Marks
+          <nav className="flex items-center gap-1 shrink-0">
+            <button onClick={() => navigate(createPageUrl('Communication'))}
+              className="relative p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Messages">
+              <MessageCircle className="w-5 h-5" />
+              {unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
             </button>
-            <button
-              onClick={() => navigate(createPageUrl('Communication'))}
-              className="text-white text-sm font-medium hover:text-purple-200 transition-colors flex items-center gap-1"
-            >
-              <Bell className="w-4 h-4" />
-              Messages
+            <button onClick={() => navigate(createPageUrl('ApplyLeave'))}
+              className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Apply Leave">
+              <Calendar className="w-5 h-5" />
             </button>
-            <button
-              onClick={() => navigate(createPageUrl('ApplyLeave'))}
-              className="text-white text-sm font-medium hover:text-purple-200 transition-colors flex items-center gap-1"
-            >
-              <Calendar className="w-4 h-4" />
-              Apply Leave
-            </button>
-            <button
-              onClick={handleLogout}
-              className="text-white hover:text-purple-200 transition-colors"
-              title="Logout"
-            >
+            <button onClick={handleLogout}
+              className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Logout">
               <LogOut className="w-5 h-5" />
             </button>
           </nav>
         </div>
       </header>
 
-      {/* Body */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        {/* Heading */}
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-slate-600" />
-          <h2 className="text-xl font-bold text-slate-800">
-            Class Students ({students.length})
-          </h2>
-        </div>
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by name or roll number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-          />
-        </div>
-
-        {/* Student cards */}
-        <div className="space-y-3">
-          {filtered.map((student, idx) => {
-            const pct = attendanceMap[student.id] ?? 100;
-            const engagement = Math.max(0, pct - Math.floor(Math.random() * 5));
-            const status = getStatus(pct);
-            const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-            const isSelected = selectedId === student.id;
-
-            return (
-              <div
-                key={student.id}
-                onClick={() => setSelectedId(isSelected ? null : student.id)}
-                className={`bg-white rounded-xl border-2 px-5 py-4 cursor-pointer transition-all flex items-center gap-4 ${
-                  isSelected ? 'border-purple-400 shadow-md' : 'border-slate-100 hover:border-purple-200 shadow-sm'
-                }`}
-              >
-                {/* Avatar */}
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${avatarColor}`}>
-                  {student.roll_number}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-slate-800 truncate">{student.name}</span>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${status.color}`}>
-                      {status.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                      Attendance {pct}%
-                    </span>
-                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                      Engagement {engagement}
-                    </span>
-                  </div>
-                </div>
+        {/* Attendance % hero card */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-5">
+          <div className={`w-20 h-20 rounded-full border-4 flex items-center justify-center shrink-0 ${
+            attendancePct === null ? 'border-slate-200' :
+            attendancePct >= 75 ? 'border-green-400' :
+            attendancePct >= 50 ? 'border-yellow-400' : 'border-red-400'
+          }`}>
+            <span className={`text-2xl font-extrabold ${getStatusColor(attendancePct)}`}>
+              {attendancePct !== null ? `${attendancePct}%` : '—'}
+            </span>
+          </div>
+          <div>
+            <p className="text-slate-500 text-sm">Overall Attendance</p>
+            <p className={`text-lg font-bold mt-0.5 ${getStatusColor(attendancePct)}`}>
+              {getStatusLabel(attendancePct)}
+            </p>
+            {attendancePct !== null && attendancePct < 75 && (
+              <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Minimum 75% required
               </div>
-            );
-          })}
+            )}
+          </div>
+        </div>
 
-          {filtered.length === 0 && (
-            <div className="text-center py-16 text-slate-400">
-              <Users className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-              <p>No students found</p>
+        {/* Stat cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard icon={CheckCircle2} label="Present" value={presentCount} color="bg-green-500" />
+          <StatCard icon={XCircle} label="Absent" value={absentCount} color="bg-red-500" />
+          <StatCard icon={Clock} label="Late" value={lateCount} color="bg-orange-500" />
+        </div>
+
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => navigate(createPageUrl('Communication'))}
+            className="relative bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-purple-300 hover:shadow-sm transition-all text-left">
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">
+              <MessageCircle className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Messages</p>
+              <p className="text-xs text-slate-500">Teacher chat</p>
+            </div>
+            {unreadMessages > 0 && (
+              <span className="absolute top-3 right-3 min-w-[20px] h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                {unreadMessages}
+              </span>
+            )}
+          </button>
+          <button onClick={() => navigate(createPageUrl('ApplyLeave'))}
+            className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-blue-300 hover:shadow-sm transition-all text-left">
+            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Apply Leave</p>
+              <p className="text-xs text-slate-500">Request absence</p>
+            </div>
+          </button>
+        </div>
+
+        {/* Recent attendance */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-4 h-4 text-slate-500" />
+            <h3 className="text-sm font-bold text-slate-800">Recent Attendance (Last 7 days)</h3>
+          </div>
+          {recentRecords.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-4">No attendance records yet</p>
+          ) : (
+            <div className="space-y-2">
+              {recentRecords.map((r, i) => {
+                const status = (r.status || '').toLowerCase();
+                const isPresent = status === 'present';
+                const isLate = status === 'late';
+                const isAbsent = status === 'absent';
+                return (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                    <span className="text-sm text-slate-600">{formatDate(r.date)}</span>
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                      isPresent ? 'bg-green-100 text-green-700' :
+                      isLate ? 'bg-orange-100 text-orange-700' :
+                      isAbsent ? 'bg-red-100 text-red-700' :
+                      'bg-slate-100 text-slate-500'
+                    }`}>
+                      {isPresent ? 'Present' : isLate ? 'Late' : isAbsent ? 'Absent' : r.status}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

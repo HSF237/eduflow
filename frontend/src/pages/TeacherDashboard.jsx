@@ -150,24 +150,24 @@ export default function TeacherDashboard() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       {/* ── HEADER ── */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         {/* Left */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center shrink-0">
             <GraduationCap className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <span className="font-extrabold text-slate-900 text-lg leading-tight">
+          <div className="min-w-0">
+            <p className="font-extrabold text-slate-900 text-base leading-tight truncate">
               {teacher?.name || 'Teacher'}
-            </span>
-            <p className="text-xs text-slate-500 leading-tight">
+            </p>
+            <p className="text-xs text-slate-500 leading-tight truncate">
               Teacher: {school?.name || '—'}
             </p>
           </div>
         </div>
 
         {/* Right */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 shrink-0 ml-2">
           <button
             className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
             title="Notifications"
@@ -194,14 +194,14 @@ export default function TeacherDashboard() {
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {/* ── CLASS SELECTOR ── */}
         {classes.length > 0 && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <label className="text-sm font-semibold text-slate-600 whitespace-nowrap">
               Select Class:
             </label>
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-green-500 min-w-[200px]"
+              className="w-full sm:w-auto border border-slate-300 rounded-lg px-3 py-2.5 sm:py-2 text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               {classes.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -261,110 +261,88 @@ export default function TeacherDashboard() {
         </div>
 
         {/* ── ACTION BUTTONS ROW 1 ── */}
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <button
-            onClick={() =>
-              navigate(`/markattendance?classId=${selectedClassId}`)
-            }
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            onClick={() => navigate(`/markattendance?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <ClipboardCheck className="w-4 h-4" />
-            Mark Today's Attendance
+            <ClipboardCheck className="w-4 h-4 shrink-0" />
+            <span>Mark Today's Attendance</span>
           </button>
 
           <button
             onClick={() => navigate(createPageUrl('ReviewLeave'))}
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <FileText className="w-4 h-4" />
-            Review Leave
+            <FileText className="w-4 h-4 shrink-0" />
+            <span>Review Leave</span>
           </button>
 
           <button
             onClick={() => navigate(createPageUrl('UnapprovedAbsences'))}
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <AlertTriangle className="w-4 h-4" />
-            Unapproved Absences
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <span>Unapproved Absences</span>
           </button>
 
           <button
-            onClick={() =>
-              navigate(
-                `${createPageUrl('ViewStudents')}?classId=${selectedClassId}`
-              )
-            }
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            onClick={() => navigate(`${createPageUrl('ViewStudents')}?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <Users className="w-4 h-4" />
-            View Students
+            <Users className="w-4 h-4 shrink-0" />
+            <span>View Students</span>
           </button>
 
           <button
-            onClick={() =>
-              navigate(
-                `${createPageUrl('ManageStudents')}?classId=${selectedClassId}`
-              )
-            }
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            onClick={() => navigate(`${createPageUrl('ManageStudents')}?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <UserPlus className="w-4 h-4" />
-            Add Students
+            <UserPlus className="w-4 h-4 shrink-0" />
+            <span>Add Students</span>
           </button>
 
           <button
-            onClick={() =>
-              navigate(
-                `${createPageUrl('AttendanceHistory')}?classId=${selectedClassId}`
-              )
-            }
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            onClick={() => navigate(`${createPageUrl('AttendanceHistory')}?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <History className="w-4 h-4" />
-            Attendance History
+            <History className="w-4 h-4 shrink-0" />
+            <span>Attendance History</span>
           </button>
         </div>
 
         {/* ── ACTION BUTTONS ROW 2 ── */}
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <button
             onClick={() => navigate(createPageUrl('TeacherManageExams'))}
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <BookMarked className="w-4 h-4" />
-            Manage Exams
+            <BookMarked className="w-4 h-4 shrink-0" />
+            <span>Manage Exams</span>
           </button>
 
           <button
-            onClick={() =>
-              navigate(
-                `${createPageUrl('EnterMarks')}?classId=${selectedClassId}`
-              )
-            }
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            onClick={() => navigate(`${createPageUrl('EnterMarks')}?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <FileText className="w-4 h-4" />
-            Enter Marks
+            <FileText className="w-4 h-4 shrink-0" />
+            <span>Enter Marks</span>
           </button>
 
           <button
             onClick={() => navigate(createPageUrl('Communication'))}
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <MessageSquare className="w-4 h-4" />
-            Messages
+            <MessageSquare className="w-4 h-4 shrink-0" />
+            <span>Messages</span>
           </button>
 
           <button
-            onClick={() =>
-              navigate(
-                `${createPageUrl('AttendanceAnalytics')}?classId=${selectedClassId}`
-              )
-            }
-            className="flex items-center gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            onClick={() => navigate(`${createPageUrl('AttendanceAnalytics')}?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
-            <BarChart2 className="w-4 h-4" />
-            Attendance Analytics
+            <BarChart2 className="w-4 h-4 shrink-0" />
+            <span>Attendance Analytics</span>
           </button>
         </div>
 

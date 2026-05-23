@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
-import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, generateCode, createClass, createStudent } from '@/lib/db';
+import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, getAttendanceByClass, generateCode, createClass, createStudent } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import {
   Users, BookOpen, UserCog, Clock, Plus, UserPlus, CheckCircle,
@@ -20,6 +20,7 @@ export default function PrincipalDashboard() {
   const [students, setStudents] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState([]);
+  const [allAttendance, setAllAttendance] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [copied, setCopied] = useState(false);
   const [showAddClass, setShowAddClass] = useState(false);
@@ -47,7 +48,9 @@ export default function PrincipalDashboard() {
         getTeachers(schoolData.id),
         getTodayAttendanceSummary(schoolData.id),
       ]);
-      setClasses(cls); setStudents(stu); setTeachers(tea); setTodayAttendance(att);
+      const attArrays = await Promise.all(cls.map(c => getAttendanceByClass(c.id)));
+      const fullAtt = attArrays.flat();
+      setClasses(cls); setStudents(stu); setTeachers(tea); setTodayAttendance(att); setAllAttendance(fullAtt);
       setStats({ students: stu.length, classes: cls.length, teachers: tea.length, pending: 0 });
     } catch (err) {
       console.error('Dashboard load error:', err);
@@ -85,10 +88,18 @@ export default function PrincipalDashboard() {
   const presentToday = todayAttendance.filter(a => a.status === 'present').length;
   const attendancePct = stats.students > 0 ? Math.round((presentToday / stats.students) * 100) : 0;
 
-  const atRiskStudents = students.filter(s => {
-    const classAttendance = todayAttendance.filter(a => a.student_id === s.id);
-    return classAttendance.length === 0;
-  }).slice(0, 5);
+  const getStudentPct = (studentId) => {
+    const recs = allAttendance.filter(a => a.student_id === studentId);
+    if (!recs.length) return null;
+    const present = recs.filter(a => ['present', 'late', 'Present', 'Late'].includes(a.status)).length;
+    return Math.round((present / recs.length) * 100);
+  };
+
+  const atRiskStudents = students
+    .map(s => ({ ...s, pct: getStudentPct(s.id) }))
+    .filter(s => s.pct !== null && s.pct < 75)
+    .sort((a, b) => a.pct - b.pct)
+    .slice(0, 5);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -99,31 +110,30 @@ export default function PrincipalDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 w-9 h-9 rounded-lg flex items-center justify-center text-white">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-4 sm:px-6 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="bg-blue-600 w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-white">
             <GraduationCap size={20} />
           </div>
-          <div>
-            <p className="font-bold text-slate-900 leading-tight">{user?.displayName || user?.email?.split('@')[0] || 'Principal'}</p>
-            <p className="text-xs text-slate-500">Principal Dashboard</p>
+          <div className="min-w-0">
+            <p className="font-bold text-slate-900 leading-tight truncate text-sm sm:text-base">{user?.displayName || user?.email?.split('@')[0] || 'Principal'}</p>
+            <p className="text-xs text-slate-500 hidden sm:block">Principal Dashboard</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {school && (
-            <button onClick={copyCode} className="flex items-center gap-2 px-3 py-1.5 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">
-              <span className="text-slate-500 text-xs">Code:</span>
+            <button onClick={copyCode} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 border border-slate-200 rounded-lg text-xs sm:text-sm hover:bg-slate-50">
               <span className="font-bold text-blue-600 tracking-widest">{school.code}</span>
-              {copied ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-slate-400" />}
+              {copied ? <Check size={13} className="text-green-500" /> : <Copy size={13} className="text-slate-400" />}
             </button>
           )}
-          <button onClick={() => navigate(createPageUrl('Notifications'))} className="p-2 text-slate-400 hover:text-slate-600"><Bell size={20} /></button>
-          <button onClick={() => navigate(createPageUrl('PrincipalSettings'))} className="p-2 text-slate-400 hover:text-slate-600"><Settings size={20} /></button>
-          <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-slate-600"><LogOut size={20} /></button>
+          <button onClick={() => navigate(createPageUrl('Notifications'))} className="p-2 text-slate-400 hover:text-slate-600"><Bell size={18} /></button>
+          <button onClick={() => navigate(createPageUrl('PrincipalSettings'))} className="p-2 text-slate-400 hover:text-slate-600"><Settings size={18} /></button>
+          <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-slate-600"><LogOut size={18} /></button>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
         {/* Stat Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard title="Total Students" value={stats.students} icon={<Users size={22} />} color="bg-blue-500" />
@@ -133,35 +143,35 @@ export default function PrincipalDashboard() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          <button onClick={() => navigate(createPageUrl('ManageClasses'))} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-            <BookOpen size={16} /> Manage Classes
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-6">
+          <button onClick={() => navigate(createPageUrl('ManageClasses'))} className="flex items-center justify-center sm:justify-start gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            <BookOpen size={16} /> <span>Manage Classes</span>
           </button>
-          <button onClick={() => navigate(createPageUrl('ManageStudents'))} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700">
-            <Users size={16} /> Manage Students
+          <button onClick={() => navigate(createPageUrl('ManageStudents'))} className="flex items-center justify-center sm:justify-start gap-2 bg-green-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-green-700">
+            <Users size={16} /> <span>Manage Students</span>
           </button>
-          <button onClick={() => navigate(createPageUrl('ReviewLeave'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <CheckCircle size={16} /> Review Leave
+          <button onClick={() => navigate(createPageUrl('ReviewLeave'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <CheckCircle size={16} /> <span>Review Leave</span>
           </button>
-          <button onClick={() => navigate(createPageUrl('UnapprovedAbsences'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <AlertTriangle size={16} /> Unapproved Absences
+          <button onClick={() => navigate(createPageUrl('UnapprovedAbsences'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <AlertTriangle size={16} /> <span>Unapproved Absences</span>
           </button>
-          <button onClick={() => navigate(createPageUrl('AttendanceApproval'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <ClipboardList size={16} /> Review Attendance
+          <button onClick={() => navigate(createPageUrl('AttendanceApproval'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <ClipboardList size={16} /> <span>Review Attendance</span>
           </button>
-          <button onClick={() => navigate(createPageUrl('Reports'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <BarChart2 size={16} /> View Reports
+          <button onClick={() => navigate(createPageUrl('Reports'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <BarChart2 size={16} /> <span>View Reports</span>
           </button>
-          <button onClick={() => navigate(createPageUrl('ManageExams'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <ClipboardList size={16} /> Manage Exams
+          <button onClick={() => navigate(createPageUrl('ManageExams'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <ClipboardList size={16} /> <span>Manage Exams</span>
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-slate-200 mb-6">
+        <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto scrollbar-hide">
           {['Overview', 'Classes', 'Teachers', 'Notifications'].map(t => (
             <button key={t} onClick={() => setActiveTab(t.toLowerCase())}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t.toLowerCase() ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              className={`px-3 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${activeTab === t.toLowerCase() ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
               {t}
             </button>
           ))}
@@ -209,8 +219,11 @@ export default function PrincipalDashboard() {
                 <div className="space-y-2">
                   {atRiskStudents.map(s => (
                     <div key={s.id} className="flex items-center justify-between py-2 border-b border-slate-100">
-                      <span className="text-sm font-medium text-slate-700">{s.name}</span>
-                      <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">At Risk</span>
+                      <div>
+                        <span className="text-sm font-medium text-slate-700">{s.name}</span>
+                        <p className="text-xs text-slate-400">{classes.find(c => c.id === s.class_id)?.name || ''}</p>
+                      </div>
+                      <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">{s.pct}%</span>
                     </div>
                   ))}
                 </div>
@@ -220,7 +233,7 @@ export default function PrincipalDashboard() {
         )}
 
         {activeTab === 'classes' && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
@@ -248,7 +261,7 @@ export default function PrincipalDashboard() {
         )}
 
         {activeTab === 'teachers' && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
