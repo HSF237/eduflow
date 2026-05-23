@@ -38,28 +38,32 @@ export default function TeacherDashboard() {
   }, [selectedClassId]);
 
   const load = async (user) => {
-    if (!user) {
-      navigate('/login?role=teacher');
-      return;
-    }
+    try {
+      if (!user) {
+        navigate('/login?role=teacher');
+        return;
+      }
 
-    const teacherData = await getTeacherByUserId(user.uid);
-    if (!teacherData) {
-      navigate(createPageUrl('JoinSchool'));
-      return;
-    }
+      const teacherData = await getTeacherByUserId(user.uid);
+      if (!teacherData) {
+        navigate(createPageUrl('JoinSchool'));
+        return;
+      }
 
-    setTeacher(teacherData);
-    setSchool(teacherData.schools || null);
+      setTeacher(teacherData);
+      setSchool(teacherData.schools || null);
 
-    // Get all classes for the school then filter to teacher's classes
-    const allClasses = await getClasses(teacherData.school_id);
-    const myClasses = allClasses.filter((c) => c.teacher_id === teacherData.id);
-    setClasses(myClasses);
+      const allClasses = await getClasses(teacherData.school_id);
+      const myClasses = allClasses.filter((c) => c.teacher_id === teacherData.id);
+      setClasses(myClasses);
 
-    if (myClasses.length > 0) {
-      setSelectedClassId(myClasses[0].id);
-    } else {
+      if (myClasses.length > 0) {
+        setSelectedClassId(myClasses[0].id);
+      } else {
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('Teacher dashboard load error:', err);
       setLoading(false);
     }
   };

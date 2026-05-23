@@ -33,22 +33,27 @@ export default function PrincipalDashboard() {
   }, [isLoadingAuth, authUser]);
 
   const load = async (user) => {
-    if (!user) { navigate('/login?role=principal'); return; }
-    setUser(user);
+    try {
+      if (!user) { navigate('/login?role=principal'); return; }
+      setUser(user);
 
-    const schoolData = await getSchoolByPrincipal(user.uid);
-    if (!schoolData) { navigate(createPageUrl('SetupSchool')); return; }
-    setSchool(schoolData);
+      const schoolData = await getSchoolByPrincipal(user.uid);
+      if (!schoolData) { navigate(createPageUrl('SetupSchool')); return; }
+      setSchool(schoolData);
 
-    const [cls, stu, tea, att] = await Promise.all([
-      getClasses(schoolData.id),
-      getStudents(schoolData.id),
-      getTeachers(schoolData.id),
-      getTodayAttendanceSummary(schoolData.id),
-    ]);
-    setClasses(cls); setStudents(stu); setTeachers(tea); setTodayAttendance(att);
-    setStats({ students: stu.length, classes: cls.length, teachers: tea.length, pending: 0 });
-    setLoading(false);
+      const [cls, stu, tea, att] = await Promise.all([
+        getClasses(schoolData.id),
+        getStudents(schoolData.id),
+        getTeachers(schoolData.id),
+        getTodayAttendanceSummary(schoolData.id),
+      ]);
+      setClasses(cls); setStudents(stu); setTeachers(tea); setTodayAttendance(att);
+      setStats({ students: stu.length, classes: cls.length, teachers: tea.length, pending: 0 });
+    } catch (err) {
+      console.error('Dashboard load error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => logout();
@@ -100,7 +105,7 @@ export default function PrincipalDashboard() {
             <GraduationCap size={20} />
           </div>
           <div>
-            <p className="font-bold text-slate-900 leading-tight">{user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Principal'}</p>
+            <p className="font-bold text-slate-900 leading-tight">{user?.displayName || user?.email?.split('@')[0] || 'Principal'}</p>
             <p className="text-xs text-slate-500">Principal Dashboard</p>
           </div>
         </div>
@@ -129,11 +134,11 @@ export default function PrincipalDashboard() {
 
         {/* Action Buttons */}
         <div className="flex flex-wrap gap-2 mb-6">
-          <button onClick={() => setShowAddClass(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-            <Plus size={16} /> Add Class
+          <button onClick={() => navigate(createPageUrl('ManageClasses'))} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
+            <BookOpen size={16} /> Manage Classes
           </button>
-          <button onClick={() => setShowAddStudent(true)} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <UserPlus size={16} /> Add Student
+          <button onClick={() => navigate(createPageUrl('ManageStudents'))} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700">
+            <Users size={16} /> Manage Students
           </button>
           <button onClick={() => navigate(createPageUrl('ReviewLeave'))} className="flex items-center gap-2 border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
             <CheckCircle size={16} /> Review Leave
