@@ -33,8 +33,18 @@ export default function Login() {
     try {
       const { user } = await signInWithEmailAndPassword(auth, formData.email, formData.password);
       await routeAfterLogin(user);
-    } catch {
-      setError('Invalid email or password. Please try again.');
+    } catch (err) {
+      const code = err.code;
+      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential')
+        setError('No account found with this email. Please sign up first.');
+      else if (code === 'auth/wrong-password')
+        setError('Wrong password. This is the password you created when you signed up — not your Gmail password.');
+      else if (code === 'auth/invalid-email')
+        setError('Invalid email address.');
+      else if (code === 'auth/too-many-requests')
+        setError('Too many failed attempts. Please wait a few minutes and try again.');
+      else
+        setError('Sign in failed. Please try again.');
     }
     setLoading(false);
   };
@@ -95,9 +105,12 @@ export default function Login() {
 
           <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-xs text-slate-400 font-medium">or use email</span>
+            <span className="text-xs text-slate-400 font-medium">or sign in with email</span>
             <div className="flex-1 h-px bg-slate-200" />
           </div>
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 text-center">
+            ⚠️ This password is <strong>not</strong> your Gmail password — it's the one you created when you registered on EduSphere.
+          </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
