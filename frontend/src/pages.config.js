@@ -26,7 +26,6 @@ import Register from './pages/Register';
 import RoleSelection from './pages/RoleSelection';
 import SelectClasses from './pages/SelectClasses';
 import SetupSchool from './pages/SetupSchool';
-import SeedData from './pages/SeedData';
 import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherManageExams from './pages/TeacherManageExams';
 import Timetable from './pages/Timetable';
@@ -64,7 +63,6 @@ export const PAGES = {
     "Register": Register,
     "ReviewLeave": ReviewLeave,
     "RoleSelection": RoleSelection,
-    "SeedData": SeedData,
     "SelectClasses": SelectClasses,
     "SetupSchool": SetupSchool,
     "TeacherDashboard": TeacherDashboard,
