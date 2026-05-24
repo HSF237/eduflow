@@ -4,13 +4,13 @@ import { createPageUrl } from '@/utils';
 import {
   getStudentsByClass, getAttendanceByClassInYear, getMessages,
   getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById, getDiaryByClass,
-  getSchoolById, getAcademicYearDates,
+  getSchoolById, getAcademicYearDates, getStudentByParentCode,
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import {
   GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
   TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle,
-  BookCopy, CalendarDays, Megaphone, BookOpen,
+  BookCopy, CalendarDays, Megaphone, BookOpen, UserPlus, X, KeyRound, Plus,
 } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, color }) {
@@ -43,12 +43,35 @@ export default function ParentDashboard() {
   const [classInfo, setClassInfo] = useState(null);
   const [todayDiary, setTodayDiary] = useState([]);
 
+  // Sibling switcher
+  const [linkedStudents, setLinkedStudents] = useState([]);
+  const [activeStudentId, setActiveStudentId] = useState('');
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [addCode, setAddCode] = useState('');
+  const [addError, setAddError] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
+
   const studentId = localStorage.getItem('parent_student_id');
   const studentName = localStorage.getItem('parent_student_name') || 'Student';
   const classId = localStorage.getItem('parent_class_id');
 
   useEffect(() => {
     if (!studentId) { navigate(createPageUrl('ParentLogin')); return; }
+
+    // Load or migrate linked students list
+    try {
+      const raw = JSON.parse(localStorage.getItem('parent_linked_students') || '[]');
+      // Migrate: if existing session has no linked list yet, create one
+      if (raw.length === 0 && studentId) {
+        const entry = { id: studentId, name: localStorage.getItem('parent_student_name') || '', class_id: classId || '', school_id: localStorage.getItem('parent_school_id') || '' };
+        localStorage.setItem('parent_linked_students', JSON.stringify([entry]));
+        setLinkedStudents([entry]);
+      } else {
+        setLinkedStudents(raw);
+      }
+    } catch { setLinkedStudents([]); }
+
+    setActiveStudentId(studentId);
     loadData();
     // FCM runs after load, completely non-blocking
     setTimeout(() => {
@@ -61,7 +84,7 @@ export default function ParentDashboard() {
         }
       });
     }, 3000);
-  }, []);
+  }, [activeStudentId]);
 
   const safe = (promise, fallback) =>
     promise.catch(() => fallback);
@@ -142,8 +165,39 @@ export default function ParentDashboard() {
     setLoading(false);
   };
 
+  const switchChild = (child) => {
+    if (child.id === localStorage.getItem('parent_student_id')) return;
+    localStorage.setItem('parent_student_id', child.id);
+    localStorage.setItem('parent_student_name', child.name);
+    localStorage.setItem('parent_class_id', child.class_id);
+    localStorage.setItem('parent_school_id', child.school_id);
+    setLoading(true);
+    setActiveStudentId(child.id);
+  };
+
+  const handleAddChild = async () => {
+    const clean = addCode.replace('-', '');
+    if (clean.length < 8) return;
+    setAddLoading(true);
+    setAddError('');
+    try {
+      const student = await getStudentByParentCode(addCode);
+      if (!student) { setAddError('Invalid code. Please check and try again.'); setAddLoading(false); return; }
+      const current = JSON.parse(localStorage.getItem('parent_linked_students') || '[]');
+      if (current.find(s => s.id === student.id)) { setAddError('This child is already linked.'); setAddLoading(false); return; }
+      if (current.length >= 6) { setAddError('Maximum 6 children per account.'); setAddLoading(false); return; }
+      const entry = { id: student.id, name: student.name || '', class_id: student.class_id || '', school_id: student.school_id || '' };
+      current.push(entry);
+      localStorage.setItem('parent_linked_students', JSON.stringify(current));
+      setLinkedStudents(current);
+      setShowAddChild(false);
+      setAddCode('');
+    } catch { setAddError('Something went wrong. Please try again.'); }
+    setAddLoading(false);
+  };
+
   const handleLogout = () => {
-    ['parent_student_id', 'parent_student_name', 'parent_class_id', 'parent_school_id']
+    ['parent_student_id', 'parent_student_name', 'parent_class_id', 'parent_school_id', 'parent_linked_students']
       .forEach(k => localStorage.removeItem(k));
     navigate(createPageUrl('RoleSelection'));
   };
@@ -220,6 +274,10 @@ export default function ParentDashboard() {
               className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Apply Leave">
               <Calendar className="w-5 h-5" />
             </button>
+            <button onClick={() => { setShowAddChild(true); setAddCode(''); setAddError(''); }}
+              className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Add Child">
+              <UserPlus className="w-5 h-5" />
+            </button>
             <button onClick={handleLogout}
               className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Logout">
               <LogOut className="w-5 h-5" />
@@ -229,6 +287,25 @@ export default function ParentDashboard() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+
+        {/* Child switcher */}
+        {linkedStudents.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {linkedStudents.map(child => (
+              <button
+                key={child.id}
+                onClick={() => switchChild(child)}
+                className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
+                  child.id === studentId
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'bg-white border border-slate-200 text-slate-700 hover:border-purple-300'
+                }`}
+              >
+                {child.name}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Student info card */}
         {student && (
@@ -465,6 +542,51 @@ export default function ParentDashboard() {
           )}
         </div>
       </main>
+
+      {/* Add Child Modal */}
+      {showAddChild && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-bold text-slate-800">Add Another Child</h2>
+              <button onClick={() => setShowAddChild(false)} className="p-1.5 rounded-lg hover:bg-slate-100">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500">Enter your other child's student code</p>
+            {addError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{addError}</p>}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mb-1.5">
+                <KeyRound className="w-3.5 h-3.5 text-purple-500" />
+                Student Code
+              </label>
+              <input
+                type="text"
+                value={addCode}
+                onChange={e => {
+                  const raw = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+                  setAddCode(raw.length > 4 ? `${raw.slice(0,4)}-${raw.slice(4)}` : raw);
+                  setAddError('');
+                }}
+                placeholder="XXXX-XXXX"
+                autoComplete="off"
+                className="w-full border border-slate-300 rounded-xl px-4 py-3 text-center font-mono text-xl tracking-[0.25em] uppercase placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowAddChild(false)}
+                className="flex-1 border border-slate-300 text-slate-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={handleAddChild} disabled={addLoading || addCode.replace('-','').length < 8}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-1.5">
+                {addLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                {addLoading ? 'Verifying...' : 'Add Child'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
