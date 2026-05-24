@@ -3,8 +3,7 @@ node_modules/
 frontend/node_modules/
 backend/node_modules/
 
-# ZeroWaste files (not part of this project)
-src/
+# Old ZeroWaste root files (not part of this project)
 scripts/
 Dockerfile
 docker-compose.yml
