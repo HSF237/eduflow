@@ -6,12 +6,14 @@ import {
   getClasses,
   getStudentsByClass,
   getAttendanceByClassAndDate,
+  getPendingLeaveCountForClasses,
 } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import {
   GraduationCap, Bell, Settings, LogOut, Users, Clock, BookOpen,
   AlertTriangle, ClipboardCheck, FileText, UserPlus, History,
   BarChart2, MessageSquare, BookMarked, CheckCircle, Loader2,
+  CalendarDays, BookCopy, Megaphone,
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -24,6 +26,7 @@ export default function TeacherDashboard() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [students, setStudents] = useState([]);
   const [todayAttendance, setTodayAttendance] = useState([]);
+  const [pendingLeaves, setPendingLeaves] = useState(0);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -59,6 +62,8 @@ export default function TeacherDashboard() {
 
       if (myClasses.length > 0) {
         setSelectedClassId(myClasses[0].id);
+        const count = await getPendingLeaveCountForClasses(myClasses.map(c => c.id));
+        setPendingLeaves(count);
       } else {
         setLoading(false);
       }
@@ -272,10 +277,15 @@ export default function TeacherDashboard() {
 
           <button
             onClick={() => navigate(createPageUrl('ReviewLeave'))}
-            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
+            className="relative flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
           >
             <FileText className="w-4 h-4 shrink-0" />
             <span>Review Leave</span>
+            {pendingLeaves > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                {pendingLeaves > 9 ? '9+' : pendingLeaves}
+              </span>
+            )}
           </button>
 
           <button
@@ -343,6 +353,30 @@ export default function TeacherDashboard() {
           >
             <BarChart2 className="w-4 h-4 shrink-0" />
             <span>Attendance Analytics</span>
+          </button>
+
+          <button
+            onClick={() => navigate(createPageUrl('Homework'))}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
+          >
+            <BookCopy className="w-4 h-4 shrink-0" />
+            <span>Homework</span>
+          </button>
+
+          <button
+            onClick={() => navigate(createPageUrl('Timetable'))}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
+          >
+            <CalendarDays className="w-4 h-4 shrink-0" />
+            <span>Timetable</span>
+          </button>
+
+          <button
+            onClick={() => navigate(createPageUrl('Announcements'))}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
+          >
+            <Megaphone className="w-4 h-4 shrink-0" />
+            <span>Announcements</span>
           </button>
         </div>
 

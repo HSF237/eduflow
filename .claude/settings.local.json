@@ -11,7 +11,10 @@
       "Bash(npm install *)",
       "Bash(xargs sed *)",
       "Bash(node_modules/.bin/vite build *)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(gh auth *)",
+      "Bash(git config *)",
+      "Bash(git credential *)"
     ]
   }
 }

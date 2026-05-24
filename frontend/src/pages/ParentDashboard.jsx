@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { getStudentsByClass, getAttendanceByClass, getMessages } from '@/lib/db';
+import {
+  getStudentsByClass, getAttendanceByClass, getMessages,
+  getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById,
+} from '@/lib/db';
 import {
   GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
-  TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle
+  TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle,
+  BookCopy, CalendarDays, Megaphone,
 } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, color }) {
@@ -19,6 +23,8 @@ function StatCard({ icon: Icon, label, value, color }) {
   );
 }
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 export default function ParentDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -29,6 +35,10 @@ export default function ParentDashboard() {
   const [lateCount, setLateCount] = useState(0);
   const [recentRecords, setRecentRecords] = useState([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [homework, setHomework] = useState([]);
+  const [todayPeriods, setTodayPeriods] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
+  const [classInfo, setClassInfo] = useState(null);
 
   const studentId = localStorage.getItem('parent_student_id');
   const studentName = localStorage.getItem('parent_student_name') || 'Student';
@@ -41,33 +51,33 @@ export default function ParentDashboard() {
 
   const loadData = async () => {
     try {
-      const [students, attendance, messages] = await Promise.all([
+      const [students, attendance, messages, hw, tt, ann, cls] = await Promise.all([
         classId ? getStudentsByClass(classId) : Promise.resolve([]),
         classId ? getAttendanceByClass(classId) : Promise.resolve([]),
         getMessages(studentId),
+        classId ? getHomeworkByClass(classId) : Promise.resolve([]),
+        classId ? getTimetable(classId) : Promise.resolve(null),
+        classId ? getAnnouncementsByClass(classId) : Promise.resolve([]),
+        classId ? getClassById(classId) : Promise.resolve(null),
       ]);
+      setClassInfo(cls);
 
-      // Find this student
       const me = students.find(s => s.id === studentId);
       setStudent(me || { name: studentName });
 
-      // Attendance stats for this student only
       const myAtt = attendance.filter(r => r.student_id === studentId);
       const present = myAtt.filter(r => ['present', 'Present'].includes(r.status)).length;
       const absent = myAtt.filter(r => ['absent', 'Absent'].includes(r.status)).length;
       const late = myAtt.filter(r => ['late', 'Late'].includes(r.status)).length;
       const total = myAtt.length;
-
       setPresentCount(present);
       setAbsentCount(absent);
       setLateCount(late);
       setAttendancePct(total > 0 ? Math.round(((present + late) / total) * 100) : null);
 
-      // Last 7 attendance records
       const sorted = [...myAtt].sort((a, b) => (b.date > a.date ? 1 : -1));
       setRecentRecords(sorted.slice(0, 7));
 
-      // Unread teacher messages
       const lastRead = parseInt(localStorage.getItem(`msg_read_${studentId}`) || '0');
       const unread = messages.filter(m => {
         if (m.sender_type !== 'teacher') return false;
@@ -75,6 +85,23 @@ export default function ParentDashboard() {
         return ms > lastRead;
       }).length;
       setUnreadMessages(unread);
+
+      // Homework: show only today + future, sorted by due date
+      const today = new Date().toISOString().split('T')[0];
+      const upcomingHw = hw
+        .filter(h => h.due_date >= today)
+        .sort((a, b) => (a.due_date > b.due_date ? 1 : -1));
+      setHomework(upcomingHw);
+
+      // Timetable: today's periods
+      if (tt) {
+        const dayName = DAY_NAMES[new Date().getDay()];
+        const periods = tt[dayName] || [];
+        setTodayPeriods(periods.filter(Boolean));
+      }
+
+      // Announcements: newest 5
+      setAnnouncements(ann.slice(0, 5));
     } catch (err) {
       console.error('Error loading parent dashboard:', err);
     }
@@ -104,6 +131,27 @@ export default function ParentDashboard() {
   const formatDate = (d) => {
     if (!d) return '';
     return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', weekday: 'short' });
+  };
+
+  const formatDueDate = (d) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (d === today) return 'Today';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
+
+  const getDueColor = (d) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (d === today) return 'bg-orange-100 text-orange-700';
+    return 'bg-blue-100 text-blue-700';
+  };
+
+  const todayLabel = DAY_NAMES[new Date().getDay()];
+
+  const formatAnnTime = (ts) => {
+    if (!ts) return '';
+    const ms = ts.toMillis?.() ?? (ts.seconds ? ts.seconds * 1000 : 0);
+    if (!ms) return '';
+    return new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
   if (loading) return (
@@ -147,6 +195,42 @@ export default function ParentDashboard() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+
+        {/* Student info card */}
+        {student && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4 flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+              <span className="text-white font-extrabold text-xl">
+                {(student.name || studentName).charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-slate-900 text-base truncate">{student.name || studentName}</p>
+              <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                {classInfo && (
+                  <span className="text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">Class:</span> {classInfo.name}{classInfo.section ? ` – ${classInfo.section}` : ''}
+                  </span>
+                )}
+                {student.roll_number && (
+                  <span className="text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">Roll No:</span> {student.roll_number}
+                  </span>
+                )}
+                {student.admission_number && (
+                  <span className="text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">Adm No:</span> {student.admission_number}
+                  </span>
+                )}
+                {student.parent_name && (
+                  <span className="text-xs text-slate-500">
+                    <span className="font-semibold text-slate-700">Parent:</span> {student.parent_name}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Attendance % hero card */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-5">
@@ -207,6 +291,84 @@ export default function ParentDashboard() {
               <p className="text-xs text-slate-500">Request absence</p>
             </div>
           </button>
+        </div>
+
+        {/* Upcoming Homework */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <BookCopy className="w-4 h-4 text-blue-500" />
+            <h3 className="text-sm font-bold text-slate-800">Upcoming Homework</h3>
+          </div>
+          {homework.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-3">No upcoming homework</p>
+          ) : (
+            <div className="space-y-2">
+              {homework.map((hw, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0 gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full shrink-0">
+                        {hw.subject}
+                      </span>
+                      <span className="text-sm font-medium text-slate-700 truncate">{hw.title}</span>
+                    </div>
+                    {hw.description && (
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">{hw.description}</p>
+                    )}
+                  </div>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full shrink-0 ${getDueColor(hw.due_date)}`}>
+                    {formatDueDate(hw.due_date)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Today's Timetable */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="w-4 h-4 text-indigo-500" />
+            <h3 className="text-sm font-bold text-slate-800">Today's Timetable</h3>
+            <span className="ml-auto text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
+              {todayLabel}
+            </span>
+          </div>
+          {todayPeriods.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-3">No timetable set for today</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {todayPeriods.map((subject, i) => (
+                <div key={i} className="flex items-center gap-2 bg-indigo-50 rounded-lg px-3 py-2">
+                  <span className="text-xs font-bold text-indigo-400 w-5 shrink-0">{i + 1}</span>
+                  <span className="text-sm font-semibold text-indigo-800 truncate">{subject}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Announcements */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Megaphone className="w-4 h-4 text-amber-500" />
+            <h3 className="text-sm font-bold text-slate-800">Announcements</h3>
+          </div>
+          {announcements.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-3">No announcements</p>
+          ) : (
+            <div className="space-y-3">
+              {announcements.map((a, i) => (
+                <div key={i} className="border-b border-slate-50 last:border-0 pb-3 last:pb-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-semibold text-slate-800 text-sm">{a.title}</p>
+                    <span className="text-xs text-slate-400 shrink-0">{formatAnnTime(a.created_at)}</span>
+                  </div>
+                  {a.body && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{a.body}</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent attendance */}
