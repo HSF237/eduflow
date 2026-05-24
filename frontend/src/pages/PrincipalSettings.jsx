@@ -5,11 +5,10 @@ import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
 import { getSchoolByPrincipal, updateSchool } from '@/lib/db';
-import { seedDemoData, clearAllSchoolData } from '@/lib/seedData';
-import { ArrowLeft, Save, Copy, Check, Loader2, User, Building2, Shield, Database, Trash2, FlaskConical, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, Copy, Check, Loader2, User, Building2, Shield, RefreshCw } from 'lucide-react';
 import { generateCode } from '@/lib/db';
 
-const TABS = ['School Info', 'Profile', 'Settings', 'Data'];
+const TABS = ['School Info', 'Profile', 'Settings'];
 
 export default function PrincipalSettings() {
   const navigate = useNavigate();
@@ -28,7 +27,6 @@ export default function PrincipalSettings() {
     academic_year_start: '',
     academic_year_end: '',
   });
-  const [dataOp, setDataOp] = useState({ loading: false, msg: '', type: '' });
 
   useEffect(() => {
     if (!isLoadingAuth) loadData(authUser);
@@ -118,33 +116,6 @@ export default function PrincipalSettings() {
       alert('Failed to save. Please try again.');
     }
     setSaving(false);
-  };
-
-  const handleSeedData = async () => {
-    if (!school) return;
-    if (!window.confirm('This will add demo classes, students, attendance, exams and marks to your school. Continue?')) return;
-    setDataOp({ loading: true, msg: 'Seeding demo data... this may take 10-20 seconds', type: 'info' });
-    try {
-      const result = await seedDemoData(school.id);
-      setDataOp({ loading: false, msg: `Done! Added ${result.classes} classes and ${result.students} students with attendance, exams & marks.`, type: 'success' });
-    } catch (err) {
-      console.error('Seed error:', err);
-      setDataOp({ loading: false, msg: 'Failed to seed data. Check console for details.', type: 'error' });
-    }
-  };
-
-  const handleClearData = async () => {
-    if (!school) return;
-    if (!window.confirm('⚠️ This will permanently delete ALL classes, students, attendance, exams and marks for your school. This cannot be undone. Are you sure?')) return;
-    if (!window.confirm('Last warning: ALL school data will be deleted. Proceed?')) return;
-    setDataOp({ loading: true, msg: 'Clearing all data...', type: 'info' });
-    try {
-      await clearAllSchoolData(school.id);
-      setDataOp({ loading: false, msg: 'All data cleared successfully.', type: 'success' });
-    } catch (err) {
-      console.error('Clear error:', err);
-      setDataOp({ loading: false, msg: 'Failed to clear data. Check console.', type: 'error' });
-    }
   };
 
   if (loading) {
@@ -387,69 +358,6 @@ export default function PrincipalSettings() {
           </div>
         )}
 
-        {/* Data tab */}
-        {activeTab === 'Data' && (
-          <div className="space-y-5">
-            {/* Status message */}
-            {dataOp.msg && (
-              <div className={`p-4 rounded-lg text-sm font-medium flex items-center gap-2
-                ${dataOp.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
-                  dataOp.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
-                  'bg-blue-50 text-blue-700 border border-blue-200'}`}>
-                {dataOp.loading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
-                {dataOp.msg}
-              </div>
-            )}
-
-            {/* Load Demo Data */}
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-1">
-                <FlaskConical className="w-5 h-5 text-blue-600" />
-                <h2 className="text-lg font-bold text-slate-800">Load Demo Data</h2>
-              </div>
-              <p className="text-sm text-slate-500 mb-4">
-                Populate your school with sample classes, students, 2 months of attendance records, exams and marks for testing.
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700 mb-5 space-y-1">
-                <p>• <strong>6 classes</strong> — Class 6A, 7A, 7B, 8A, 9B, 10A</p>
-                <p>• <strong>35 students</strong> — with roll numbers, admission numbers, parent names</p>
-                <p>• <strong>~40 days</strong> of attendance data (weekdays only)</p>
-                <p>• <strong>18 exams</strong> — Unit Tests, Periodic Tests, Half Yearly per class</p>
-                <p>• <strong>Marks</strong> for every student in every exam</p>
-              </div>
-              <button
-                onClick={handleSeedData}
-                disabled={dataOp.loading}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-lg transition-colors"
-              >
-                {dataOp.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                Load Demo Data
-              </button>
-            </div>
-
-            {/* Clear All Data */}
-            <div className="bg-white rounded-xl border border-red-100 shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-1">
-                <Trash2 className="w-5 h-5 text-red-600" />
-                <h2 className="text-lg font-bold text-slate-800">Clear All Data</h2>
-              </div>
-              <p className="text-sm text-slate-500 mb-2">
-                Permanently delete all classes, students, attendance, exams and marks for your school.
-              </p>
-              <p className="text-xs text-red-600 font-medium mb-5">
-                ⚠️ This action cannot be undone. Your school account and login will remain.
-              </p>
-              <button
-                onClick={handleClearData}
-                disabled={dataOp.loading}
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed text-white font-semibold px-5 py-2.5 rounded-lg transition-colors"
-              >
-                {dataOp.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Clear All Data
-              </button>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );
