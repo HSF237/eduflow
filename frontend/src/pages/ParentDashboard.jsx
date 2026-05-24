@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
-  getStudentsByClass, getAttendanceByClass, getMessages,
+  getStudentsByClass, getAttendanceByClassInYear, getMessages,
   getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById, getDiaryByClass,
+  getSchoolById, getAcademicYearDates,
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import {
@@ -70,10 +71,15 @@ export default function ParentDashboard() {
 
   const loadData = async () => {
     try {
+      // Fetch school first (single read) to know the academic year date range
+      const schoolId = localStorage.getItem('parent_school_id');
+      const school = schoolId ? await safe(getSchoolById(schoolId), null) : null;
+      const { start, end } = getAcademicYearDates(school);
+
       const [students, attendance, messages, hw, tt, ann, cls, diary] = await withTimeout(
         Promise.all([
           classId ? safe(getStudentsByClass(classId), []) : Promise.resolve([]),
-          classId ? safe(getAttendanceByClass(classId), []) : Promise.resolve([]),
+          classId ? safe(getAttendanceByClassInYear(classId, start, end), []) : Promise.resolve([]),
           safe(getMessages(studentId), []),
           classId ? safe(getHomeworkByClass(classId), []) : Promise.resolve([]),
           classId ? safe(getTimetable(classId), null) : Promise.resolve(null),

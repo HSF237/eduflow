@@ -23,7 +23,11 @@ export default function PrincipalSettings() {
 
   const [schoolData, setSchoolData] = useState({ name: '', address: '', phone: '', code: '' });
   const [profileData, setProfileData] = useState({ display_name: '' });
-  const [settingsData, setSettingsData] = useState({ attendance_threshold: 75 });
+  const [settingsData, setSettingsData] = useState({
+    attendance_threshold: 75,
+    academic_year_start: '',
+    academic_year_end: '',
+  });
   const [dataOp, setDataOp] = useState({ loading: false, msg: '', type: '' });
 
   useEffect(() => {
@@ -48,7 +52,9 @@ export default function PrincipalSettings() {
           code: schoolData.code || ''
         });
         setSettingsData({
-          attendance_threshold: schoolData.attendance_threshold ?? 75
+          attendance_threshold: schoolData.attendance_threshold ?? 75,
+          academic_year_start: schoolData.academic_year_start || '',
+          academic_year_end: schoolData.academic_year_end || '',
         });
       }
 
@@ -102,7 +108,9 @@ export default function PrincipalSettings() {
     setSaving(true);
     try {
       await updateSchool(school.id, {
-        attendance_threshold: settingsData.attendance_threshold
+        attendance_threshold: settingsData.attendance_threshold,
+        academic_year_start: settingsData.academic_year_start,
+        academic_year_end: settingsData.academic_year_end,
       });
       alert('Settings saved!');
     } catch (err) {
@@ -331,6 +339,40 @@ export default function PrincipalSettings() {
                   className="w-full border border-slate-300 rounded-lg px-4 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
                 />
                 <p className="text-xs text-slate-400 mt-1">Alert when student attendance falls below this percentage</p>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 mt-2">
+                <h3 className="text-sm font-semibold text-slate-700 mb-1">Academic Year</h3>
+                <p className="text-xs text-slate-400 mb-3">
+                  All dashboards and report cards will only show data within this date range.
+                  Set the end date whenever the year finishes — staff can then print year-end report cards from View Students.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      value={settingsData.academic_year_start}
+                      onChange={e => setSettingsData({ ...settingsData, academic_year_start: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={settingsData.academic_year_end}
+                      onChange={e => setSettingsData({ ...settingsData, academic_year_end: e.target.value })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+                </div>
+                {settingsData.academic_year_start && settingsData.academic_year_end && (
+                  <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mt-2">
+                    Academic Year: <strong>{settingsData.academic_year_start}</strong> → <strong>{settingsData.academic_year_end}</strong>
+                    {' '}({settingsData.academic_year_start.slice(0,4)}–{settingsData.academic_year_end.slice(0,4)})
+                  </p>
+                )}
               </div>
 
               <button

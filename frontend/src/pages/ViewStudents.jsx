@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { getClassById, getStudentsByClass, getAttendanceByClass, updateStudent, generateParentCode } from '@/lib/db';
+import {
+  getClassById, getStudentsByClass, getAttendanceByClassInYear,
+  getSchoolById, getAcademicYearDates, updateStudent, generateParentCode,
+} from '@/lib/db';
 import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText } from 'lucide-react';
 
 export default function ViewStudents() {
@@ -21,13 +24,15 @@ export default function ViewStudents() {
   const loadData = async () => {
     try {
       if (!classId) { navigate(createPageUrl('TeacherDashboard')); return; }
-      const [cls, studs, att] = await Promise.all([
+      const [cls, studs] = await Promise.all([
         getClassById(classId),
         getStudentsByClass(classId),
-        getAttendanceByClass(classId),
       ]);
       setClassInfo(cls);
       setStudents(studs);
+      const school = cls?.school_id ? await getSchoolById(cls.school_id).catch(() => null) : null;
+      const { start, end } = getAcademicYearDates(school);
+      const att = await getAttendanceByClassInYear(classId, start, end);
       setAttendance(att);
     } catch (err) {
       console.error('ViewStudents error:', err);

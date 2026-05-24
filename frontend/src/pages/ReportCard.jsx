@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  getStudentsByClass, getAttendanceByClass,
+  getStudentsByClass, getAttendanceByClassInYear,
   getExamsByClass, getMarksByStudent, getClassById,
+  getSchoolById, getAcademicYearDates,
 } from '@/lib/db';
 import { ArrowLeft, Loader2, Printer, GraduationCap } from 'lucide-react';
 
@@ -46,21 +47,29 @@ export default function ReportCard() {
   const [attendance, setAttendance] = useState([]);
   const [exams, setExams] = useState([]);
   const [marks, setMarks] = useState([]);
+  const [yearLabel, setYearLabel] = useState('');
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
     if (!studentId || !classId) { navigate(-1); return; }
     try {
-      const [students, cls, att, examList, studentMarks] = await Promise.all([
+      const [students, cls] = await Promise.all([
         getStudentsByClass(classId),
         getClassById(classId),
-        getAttendanceByClass(classId),
-        getExamsByClass(classId),
-        getMarksByStudent(studentId),
       ]);
       setStudent(students.find(s => s.id === studentId) || null);
       setClassInfo(cls);
+
+      const school = cls?.school_id ? await getSchoolById(cls.school_id).catch(() => null) : null;
+      const { start, end, label } = getAcademicYearDates(school);
+      setYearLabel(label);
+
+      const [att, examList, studentMarks] = await Promise.all([
+        getAttendanceByClassInYear(classId, start, end),
+        getExamsByClass(classId),
+        getMarksByStudent(studentId),
+      ]);
       setAttendance(att.filter(r => r.student_id === studentId));
       setExams(examList);
       setMarks(studentMarks);
@@ -133,7 +142,9 @@ export default function ReportCard() {
               <GraduationCap className="w-10 h-10 opacity-90" />
             </div>
             <h1 className="text-2xl font-extrabold tracking-wide">STUDENT REPORT CARD</h1>
-            <p className="text-blue-200 text-sm mt-1">Academic Progress Report</p>
+            <p className="text-blue-200 text-sm mt-1">
+              Academic Progress Report{yearLabel ? ` · ${yearLabel}` : ''}
+            </p>
           </div>
 
           {/* Student details */}

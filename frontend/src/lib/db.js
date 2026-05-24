@@ -24,6 +24,20 @@ const sortBy = (arr, key, dir = 'asc') =>
     return dir === 'desc' ? (bv > av ? 1 : -1) : (av > bv ? 1 : -1);
   });
 
+// ── Academic Year ─────────────────────────────────────────────────────────────
+export const getAcademicYearDates = (school) => {
+  const now = new Date();
+  // Default for Indian schools: April–March
+  const startYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return {
+    start: school?.academic_year_start || `${startYear}-04-01`,
+    end:   school?.academic_year_end   || `${startYear + 1}-03-31`,
+    label: school?.academic_year_start
+      ? `${school.academic_year_start.slice(0, 4)}–${(school.academic_year_end || '').slice(0, 4)}`
+      : `${startYear}–${startYear + 1}`,
+  };
+};
+
 // ── Schools ──────────────────────────────────────────────────────────────────
 export const getSchoolByPrincipal = async (userId) => {
   const q = query(collection(db, 'schools'), where('principal_id', '==', userId));
@@ -37,6 +51,10 @@ export const createSchool = async (data) => {
 export const updateSchool = async (id, data) => {
   await updateDoc(doc(db, 'schools', id), data);
   return { id, ...data };
+};
+export const getSchoolById = async (id) => {
+  const d = await getDoc(doc(db, 'schools', id));
+  return d.exists() ? { id: d.id, ...d.data() } : null;
 };
 export const getSchoolByCode = async (code) => {
   const q = query(collection(db, 'schools'), where('code', '==', code.toUpperCase()));
@@ -137,6 +155,21 @@ export const getAttendanceByClassAndDate = async (classId, date) => {
 export const getAttendanceByClass = async (classId) => {
   const q = query(collection(db, 'attendance'), where('class_id', '==', classId));
   return snapAll(await getDocs(q));
+};
+export const getAttendanceByClassInYear = async (classId, startDate, endDate) => {
+  try {
+    const q = query(
+      collection(db, 'attendance'),
+      where('class_id', '==', classId),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate),
+    );
+    return snapAll(await getDocs(q));
+  } catch {
+    // Composite index not yet deployed — fall back and filter in memory
+    const all = await getAttendanceByClass(classId);
+    return all.filter(r => r.date >= startDate && r.date <= endDate);
+  }
 };
 export const saveAttendance = async (records) => {
   const promises = records.map(r => {
