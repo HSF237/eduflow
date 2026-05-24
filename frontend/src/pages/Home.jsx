@@ -23,11 +23,16 @@ export default function Home() {
 
   useEffect(() => {
     if (loading) return;
-    // Parent already logged in → go straight to their dashboard
+    // Parent already logged in → skip everything
     if (localStorage.getItem('parent_student_id')) {
       navigate(createPageUrl('ParentDashboard'), { replace: true });
+      return;
     }
-  }, [loading]);
+    // Firebase user (teacher/principal) already logged in → skip landing page
+    if (user) {
+      navigate(createPageUrl('Dashboard'), { replace: true });
+    }
+  }, [loading, user]);
 
   const features = [
     {
@@ -140,24 +145,24 @@ export default function Home() {
                 <div className="w-3 h-3 rounded-full bg-green-400"></div>
               </div>
               <div className="p-6 bg-gradient-to-br from-slate-50 to-blue-50">
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <div className="text-sm text-slate-500">Total Students</div>
+                    <div className="text-xs text-slate-500">Total Students</div>
                     <div className="text-2xl font-bold text-slate-800">1,234</div>
                     <div className="text-xs text-green-600 mt-1">+12% this month</div>
                   </div>
                   <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <div className="text-sm text-slate-500">Avg Attendance</div>
+                    <div className="text-xs text-slate-500">Avg Attendance</div>
                     <div className="text-2xl font-bold text-slate-800">94.5%</div>
                     <div className="text-xs text-green-600 mt-1">Above target</div>
                   </div>
                   <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <div className="text-sm text-slate-500">Engagement Score</div>
+                    <div className="text-xs text-slate-500">Engagement Score</div>
                     <div className="text-2xl font-bold text-slate-800">87</div>
                     <div className="text-xs text-blue-600 mt-1">Good</div>
                   </div>
                   <div className="bg-white rounded-xl p-4 shadow-sm">
-                    <div className="text-sm text-slate-500">At-Risk Students</div>
+                    <div className="text-xs text-slate-500">At-Risk Students</div>
                     <div className="text-2xl font-bold text-orange-600">23</div>
                     <div className="text-xs text-orange-600 mt-1">Needs attention</div>
                   </div>
