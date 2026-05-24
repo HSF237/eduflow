@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPageUrl } from '@/utils';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/AuthContext';
 import {
@@ -17,8 +17,17 @@ import { motion } from 'framer-motion';
 
 export default function Home() {
   const { user, isLoadingAuth } = useAuth();
+  const navigate = useNavigate();
   const isAuthenticated = !!user;
   const loading = isLoadingAuth;
+
+  useEffect(() => {
+    if (loading) return;
+    // Parent already logged in → go straight to their dashboard
+    if (localStorage.getItem('parent_student_id')) {
+      navigate(createPageUrl('ParentDashboard'), { replace: true });
+    }
+  }, [loading]);
 
   const features = [
     {

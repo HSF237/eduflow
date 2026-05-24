@@ -1,19 +1,41 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Shield, Users, User, ArrowRight, GraduationCap } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/hooks/AuthContext';
+import { getSchoolByPrincipal, getTeacherByUserId } from '@/lib/db';
 
 export default function RoleSelection() {
   const navigate = useNavigate();
+  const { user, isLoadingAuth } = useAuth();
+
+  useEffect(() => {
+    if (isLoadingAuth) return;
+    // Parent already logged in
+    if (localStorage.getItem('parent_student_id')) {
+      navigate(createPageUrl('ParentDashboard'), { replace: true });
+      return;
+    }
+    // Firebase user already logged in — figure out their role
+    if (user) {
+      (async () => {
+        const school = await getSchoolByPrincipal(user.uid);
+        if (school) { navigate(createPageUrl('PrincipalDashboard'), { replace: true }); return; }
+        const teacher = await getTeacherByUserId(user.uid);
+        if (teacher) { navigate(createPageUrl('TeacherDashboard'), { replace: true }); return; }
+        // New Google user with no role yet — let them choose below
+      })();
+    }
+  }, [isLoadingAuth, user]);
 
   const handleRoleSelect = (role) => {
     if (role === 'principal') {
-      navigate(createPageUrl('SetupSchool'));
+      navigate(user ? createPageUrl('SetupSchool') : '/login?role=principal');
     } else if (role === 'teacher') {
-      navigate(createPageUrl('JoinSchool'));
+      navigate(user ? createPageUrl('JoinSchool') : '/login?role=teacher');
     } else {
       navigate(createPageUrl('ParentLogin'));
     }
@@ -30,7 +52,7 @@ export default function RoleSelection() {
 
       <div className="text-center mb-12">
         <h1 className="text-3xl font-bold text-slate-900 mb-2">Choose Your Role</h1>
-        <p className="text-slate-500">How will you be using the EduSphere platform today?</p>
+        <p className="text-slate-500">How will you be using EduSphere?</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full">
@@ -48,16 +70,10 @@ export default function RoleSelection() {
         />
         <RoleCard
           title="Parent"
-          description="Simple view of your child's attendance and academic engagement."
+          description="View your child's attendance, homework, timetable, and more."
           icon={<User className="w-10 h-10 text-blue-600" />}
           onClick={() => handleRoleSelect('parent')}
         />
-      </div>
-
-      <div className="mt-12">
-        <p className="text-sm text-slate-400">
-          Powered by EduSphere Learning Intelligence
-        </p>
       </div>
     </div>
   );
@@ -65,11 +81,8 @@ export default function RoleSelection() {
 
 function RoleCard({ title, description, icon, onClick }) {
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      transition={{ type: 'spring', stiffness: 300 }}
-    >
-      <Card 
+    <motion.div whileHover={{ y: -5 }} transition={{ type: 'spring', stiffness: 300 }}>
+      <Card
         className="cursor-pointer border-none shadow-lg hover:shadow-xl transition-all h-full bg-white flex flex-col pt-4"
         onClick={onClick}
       >
@@ -78,9 +91,7 @@ function RoleCard({ title, description, icon, onClick }) {
             {icon}
           </div>
           <CardTitle className="text-xl font-bold text-slate-900">{title}</CardTitle>
-          <CardDescription className="text-slate-500 min-h-[60px]">
-            {description}
-          </CardDescription>
+          <CardDescription className="text-slate-500 min-h-[60px]">{description}</CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center pb-8 mt-auto">
           <Button variant="ghost" className="text-blue-600 group">
