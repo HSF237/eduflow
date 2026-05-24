@@ -264,3 +264,19 @@ export const createLeaveRequest = async (data) => {
 export const updateLeaveStatus = async (id, status) => {
   await updateDoc(doc(db, 'leave_requests', id), { status });
 };
+
+// ── FCM Tokens ────────────────────────────────────────────────────────────────
+export const getFcmTokensForClass = async (classId) => {
+  const students = await getStudentsByClass(classId);
+  const tokens = [];
+  for (const s of students) {
+    const d = await getDoc(doc(db, 'fcm_tokens', s.id));
+    if (d.exists()) tokens.push(d.data().token);
+  }
+  return tokens;
+};
+
+export const getFcmTokenForStudent = async (studentId) => {
+  const d = await getDoc(doc(db, 'fcm_tokens', studentId));
+  return d.exists() ? d.data().token : null;
+};

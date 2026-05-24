@@ -5,6 +5,7 @@ import {
   getStudentsByClass, getAttendanceByClass, getMessages,
   getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById,
 } from '@/lib/db';
+import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import {
   GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
   TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle,
@@ -47,6 +48,17 @@ export default function ParentDashboard() {
   useEffect(() => {
     if (!studentId) { navigate(createPageUrl('ParentLogin')); return; }
     loadData();
+    // Register for push notifications (asks permission once)
+    requestAndSaveToken(studentId);
+    // Show foreground notifications as browser alerts
+    const unsub = onForegroundMessage((payload) => {
+      const title = payload.notification?.title || 'EduSphere';
+      const body  = payload.notification?.body  || '';
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: '/edusphere.svg' });
+      }
+    });
+    return () => unsub?.();
   }, []);
 
   const loadData = async () => {

@@ -4,7 +4,9 @@ import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
 import {
   getTeacherByUserId, getClasses, getHomeworkByClass, addHomework, deleteHomework,
+  getFcmTokensForClass,
 } from '@/lib/db';
+import { sendPush } from '@/lib/fcm';
 import { ArrowLeft, Loader2, BookOpen, Plus, Trash2, X } from 'lucide-react';
 
 const SUBJECTS = [
@@ -67,6 +69,10 @@ export default function Homework() {
     setForm({ title: '', subject: 'Math', customSubject: '', description: '', due_date: '' });
     setShowForm(false);
     setSaving(false);
+    // Push notification — fire and forget
+    getFcmTokensForClass(selectedClassId).then(tokens =>
+      sendPush(tokens, '📚 New Homework', `${finalSubject}: ${form.title}`)
+    );
   };
 
   const handleDelete = async (id) => {

@@ -5,8 +5,9 @@ import { createPageUrl } from '@/utils';
 import {
   getTeacherByUserId, getSchoolByPrincipal,
   getLeaveRequests, getLeavesByClass, updateLeaveStatus,
-  getStudents, getClasses
+  getStudents, getClasses, getFcmTokenForStudent,
 } from '@/lib/db';
+import { sendPush } from '@/lib/fcm';
 import { ArrowLeft, Loader2, CheckCircle, XCircle, Clock, Calendar } from 'lucide-react';
 
 export default function ReviewLeave() {
@@ -73,6 +74,15 @@ export default function ReviewLeave() {
     try {
       await updateLeaveStatus(selectedApp.id, status);
       setLeaves(prev => prev.map(l => l.id === selectedApp.id ? { ...l, status } : l));
+      // Push notification to parent
+      const studentName = selectedApp.student_name || getStudentName(selectedApp.student_id);
+      getFcmTokenForStudent(selectedApp.student_id).then(token => {
+        if (token) sendPush(
+          [token],
+          status === 'approved' ? '✅ Leave Approved' : '❌ Leave Rejected',
+          `${studentName}'s leave (${selectedApp.from_date} – ${selectedApp.to_date}) has been ${status}`
+        );
+      });
       setSelectedApp(null);
       setRemarks('');
     } catch (err) {
