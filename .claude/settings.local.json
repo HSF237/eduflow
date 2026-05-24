@@ -14,7 +14,10 @@
       "Bash(echo \"EXIT:$?\")",
       "Bash(gh auth *)",
       "Bash(git config *)",
-      "Bash(git credential *)"
+      "Bash(git credential *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
