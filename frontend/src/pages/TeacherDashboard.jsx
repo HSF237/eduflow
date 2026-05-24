@@ -75,12 +75,20 @@ export default function TeacherDashboard() {
 
   const loadClassData = async (classId) => {
     setLoading(true);
-    const [studs, att] = await Promise.all([
-      getStudentsByClass(classId),
-      getAttendanceByClassAndDate(classId, today),
-    ]);
-    setStudents(studs);
-    setTodayAttendance(att);
+    try {
+      const timeout = new Promise(res => setTimeout(() => res([[], []]), 10000));
+      const [studs, att] = await Promise.race([
+        Promise.all([
+          getStudentsByClass(classId).catch(() => []),
+          getAttendanceByClassAndDate(classId, today).catch(() => []),
+        ]),
+        timeout,
+      ]);
+      setStudents(studs);
+      setTodayAttendance(att);
+    } catch {
+      // leave empty — don't stay stuck
+    }
     setLoading(false);
   };
 

@@ -48,30 +48,40 @@ export default function ParentDashboard() {
   useEffect(() => {
     if (!studentId) { navigate(createPageUrl('ParentLogin')); return; }
     loadData();
-    // Register for push notifications (asks permission once)
-    requestAndSaveToken(studentId);
-    // Show foreground notifications as browser alerts
-    const unsub = onForegroundMessage((payload) => {
-      const title = payload.notification?.title || 'EduSphere';
-      const body  = payload.notification?.body  || '';
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(title, { body, icon: '/edusphere.svg' });
-      }
-    });
-    return () => unsub?.();
+    // FCM runs after load, completely non-blocking
+    setTimeout(() => {
+      requestAndSaveToken(studentId);
+      onForegroundMessage((payload) => {
+        const title = payload.notification?.title || 'EduSphere';
+        const body  = payload.notification?.body  || '';
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(title, { body, icon: '/edusphere.svg' });
+        }
+      });
+    }, 3000);
   }, []);
+
+  const safe = (promise, fallback) =>
+    promise.catch(() => fallback);
+
+  const withTimeout = (promise, ms, fallback) =>
+    Promise.race([promise, new Promise(res => setTimeout(() => res(fallback), ms))]);
 
   const loadData = async () => {
     try {
-      const [students, attendance, messages, hw, tt, ann, cls] = await Promise.all([
-        classId ? getStudentsByClass(classId) : Promise.resolve([]),
-        classId ? getAttendanceByClass(classId) : Promise.resolve([]),
-        getMessages(studentId),
-        classId ? getHomeworkByClass(classId) : Promise.resolve([]),
-        classId ? getTimetable(classId) : Promise.resolve(null),
-        classId ? getAnnouncementsByClass(classId) : Promise.resolve([]),
-        classId ? getClassById(classId) : Promise.resolve(null),
-      ]);
+      const [students, attendance, messages, hw, tt, ann, cls] = await withTimeout(
+        Promise.all([
+          classId ? safe(getStudentsByClass(classId), []) : Promise.resolve([]),
+          classId ? safe(getAttendanceByClass(classId), []) : Promise.resolve([]),
+          safe(getMessages(studentId), []),
+          classId ? safe(getHomeworkByClass(classId), []) : Promise.resolve([]),
+          classId ? safe(getTimetable(classId), null) : Promise.resolve(null),
+          classId ? safe(getAnnouncementsByClass(classId), []) : Promise.resolve([]),
+          classId ? safe(getClassById(classId), null) : Promise.resolve(null),
+        ]),
+        12000,
+        [[], [], [], [], null, [], null]
+      );
       setClassInfo(cls);
 
       const me = students.find(s => s.id === studentId);
