@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
   getStudentsByClass, getAttendanceByClass, getMessages,
-  getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById,
+  getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById, getDiaryByClass,
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import {
   GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
   TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle,
-  BookCopy, CalendarDays, Megaphone,
+  BookCopy, CalendarDays, Megaphone, BookOpen,
 } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, color }) {
@@ -40,6 +40,7 @@ export default function ParentDashboard() {
   const [todayPeriods, setTodayPeriods] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [classInfo, setClassInfo] = useState(null);
+  const [todayDiary, setTodayDiary] = useState([]);
 
   const studentId = localStorage.getItem('parent_student_id');
   const studentName = localStorage.getItem('parent_student_name') || 'Student';
@@ -69,7 +70,7 @@ export default function ParentDashboard() {
 
   const loadData = async () => {
     try {
-      const [students, attendance, messages, hw, tt, ann, cls] = await withTimeout(
+      const [students, attendance, messages, hw, tt, ann, cls, diary] = await withTimeout(
         Promise.all([
           classId ? safe(getStudentsByClass(classId), []) : Promise.resolve([]),
           classId ? safe(getAttendanceByClass(classId), []) : Promise.resolve([]),
@@ -78,9 +79,10 @@ export default function ParentDashboard() {
           classId ? safe(getTimetable(classId), null) : Promise.resolve(null),
           classId ? safe(getAnnouncementsByClass(classId), []) : Promise.resolve([]),
           classId ? safe(getClassById(classId), null) : Promise.resolve(null),
+          classId ? safe(getDiaryByClass(classId), []) : Promise.resolve([]),
         ]),
         12000,
-        [[], [], [], [], null, [], null]
+        [[], [], [], [], null, [], null, []]
       );
       setClassInfo(cls);
 
@@ -124,6 +126,10 @@ export default function ParentDashboard() {
 
       // Announcements: newest 5
       setAnnouncements(ann.slice(0, 5));
+
+      // Diary: today's entries only
+      const todayStr = new Date().toISOString().split('T')[0];
+      setTodayDiary((diary || []).filter(d => d.date === todayStr));
     } catch (err) {
       console.error('Error loading parent dashboard:', err);
     }
@@ -389,6 +395,31 @@ export default function ParentDashboard() {
                     <span className="text-xs text-slate-400 shrink-0">{formatAnnTime(a.created_at)}</span>
                   </div>
                   {a.body && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{a.body}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Today's Diary */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <BookOpen className="w-4 h-4 text-emerald-500" />
+            <h3 className="text-sm font-bold text-slate-800">Today's Diary</h3>
+            <span className="ml-auto text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+              Today
+            </span>
+          </div>
+          {todayDiary.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-3">No diary entries for today yet</p>
+          ) : (
+            <div className="space-y-3">
+              {todayDiary.map((entry, i) => (
+                <div key={i} className="border-b border-slate-50 last:border-0 pb-3 last:pb-0">
+                  <span className="text-xs font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
+                    {entry.subject}
+                  </span>
+                  <p className="text-sm text-slate-700 mt-1.5 leading-relaxed">{entry.content}</p>
                 </div>
               ))}
             </div>

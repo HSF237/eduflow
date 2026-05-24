@@ -1,4 +1,6 @@
 import Announcements from './pages/Announcements';
+import Diary from './pages/Diary';
+import ReportCard from './pages/ReportCard';
 import ApplyLeave from './pages/ApplyLeave';
 import AttendanceAnalytics from './pages/AttendanceAnalytics';
 import AttendanceApproval from './pages/AttendanceApproval';
@@ -44,6 +46,7 @@ export const PAGES = {
     "AttendanceHistory": AttendanceHistory,
     "Communication": Communication,
     "Dashboard": Dashboard,
+    "Diary": Diary,
     "EditAttendance": EditAttendance,
     "EnterMarks": EnterMarks,
     "Home": Home,
@@ -61,6 +64,7 @@ export const PAGES = {
     "PrincipalSettings": PrincipalSettings,
     "Reports": Reports,
     "Register": Register,
+    "ReportCard": ReportCard,
     "ReviewLeave": ReviewLeave,
     "RoleSelection": RoleSelection,
     "SelectClasses": SelectClasses,

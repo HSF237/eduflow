@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { getClassById, getStudentsByClass, getAttendanceByClass, updateStudent, generateParentCode } from '@/lib/db';
-import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText } from 'lucide-react';
 
 export default function ViewStudents() {
   const navigate = useNavigate();
@@ -152,6 +152,15 @@ export default function ViewStudents() {
                     <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${getBadgeColor(eng)}`}>{eng}</span>
                   </div>
                 </div>
+
+                {/* Report card link */}
+                <button
+                  onClick={() => navigate(`${createPageUrl('ReportCard')}?studentId=${student.id}&classId=${classId}`)}
+                  className="w-full flex items-center justify-center gap-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg px-3 py-2 text-xs font-semibold transition-colors mb-2"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  View Report Card
+                </button>
 
                 {/* Parent code row */}
                 <div className="flex items-center gap-2 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">

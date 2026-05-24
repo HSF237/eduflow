@@ -265,6 +265,19 @@ export const updateLeaveStatus = async (id, status) => {
   await updateDoc(doc(db, 'leave_requests', id), { status });
 };
 
+// ── Daily Diary ───────────────────────────────────────────────────────────────
+export const addDiaryEntry = async (data) => {
+  const ref = await addDoc(collection(db, 'diary'), { ...data, created_at: serverTimestamp() });
+  return { id: ref.id, ...data };
+};
+export const getDiaryByClass = async (classId) => {
+  const q = query(collection(db, 'diary'), where('class_id', '==', classId));
+  return sortBy(snapAll(await getDocs(q)), 'date', 'desc');
+};
+export const deleteDiaryEntry = async (id) => {
+  await deleteDoc(doc(db, 'diary', id));
+};
+
 // ── FCM Tokens ────────────────────────────────────────────────────────────────
 export const getFcmTokensForClass = async (classId) => {
   const students = await getStudentsByClass(classId);
