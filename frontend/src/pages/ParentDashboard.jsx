@@ -346,8 +346,10 @@ export default function ParentDashboard() {
               {todayLabel}
             </span>
           </div>
-          {todayPeriods.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-3">No timetable set for today</p>
+          {new Date().getDay() === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-3">🎉 No school today — enjoy the weekend!</p>
+          ) : todayPeriods.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-3">Timetable not set up yet by teacher</p>
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {todayPeriods.map((subject, i) => (
