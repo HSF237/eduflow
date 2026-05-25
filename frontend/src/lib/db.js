@@ -210,6 +210,17 @@ export const deleteExam = async (id) => {
 };
 
 // ── Marks ────────────────────────────────────────────────────────────────────
+export const getMarksByExams = async (examIds) => {
+  if (!examIds.length) return [];
+  const chunks = [];
+  for (let i = 0; i < examIds.length; i += 30) chunks.push(examIds.slice(i, i + 30));
+  const results = await Promise.all(chunks.map(async chunk => {
+    const q = query(collection(db, 'marks'), where('exam_id', 'in', chunk));
+    return snapAll(await getDocs(q));
+  }));
+  return results.flat();
+};
+
 export const getMarksByExam = async (examId) => {
   const q = query(collection(db, 'marks'), where('exam_id', '==', examId));
   return snapAll(await getDocs(q));

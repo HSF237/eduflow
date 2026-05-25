@@ -1,6 +1,7 @@
 import Announcements from './pages/Announcements';
 import Diary from './pages/Diary';
 import ReportCard from './pages/ReportCard';
+import StudentProgress from './pages/StudentProgress';
 import ApplyLeave from './pages/ApplyLeave';
 import AttendanceAnalytics from './pages/AttendanceAnalytics';
 import AttendanceApproval from './pages/AttendanceApproval';
@@ -65,6 +66,7 @@ export const PAGES = {
     "Reports": Reports,
     "Register": Register,
     "ReportCard": ReportCard,
+    "StudentProgress": StudentProgress,
     "ReviewLeave": ReviewLeave,
     "RoleSelection": RoleSelection,
     "SelectClasses": SelectClasses,

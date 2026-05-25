@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { getClassById, getStudentsByClass, getAttendanceByClass } from '@/lib/db';
-import { ArrowLeft, Loader2, Calendar, CheckCircle, XCircle, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar, CheckCircle, XCircle, Clock, AlertTriangle, Download } from 'lucide-react';
 
 export default function AttendanceHistory() {
   const navigate = useNavigate();
@@ -31,6 +31,39 @@ export default function AttendanceHistory() {
       console.error('AttendanceHistory error:', err);
     }
     setLoading(false);
+  };
+
+  const downloadCSV = () => {
+    const datesInView = filteredDates.slice().sort((a, b) => new Date(a) - new Date(b));
+    const sortedStudents = [...students].sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
+
+    const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit' });
+    const headers = ['Roll No', 'Student Name', ...datesInView.map(fmtDate), 'Total Days', 'Present', 'Absent', 'Late', 'Attendance %'];
+
+    const rows = sortedStudents.map(s => {
+      const statuses = datesInView.map(date => {
+        const rec = (grouped[date] || []).find(r => r.student_id === s.id);
+        if (!rec) return '-';
+        const st = (rec.status || '').toLowerCase();
+        return st === 'present' ? 'P' : st === 'absent' ? 'A' : st === 'late' ? 'L' : rec.status[0]?.toUpperCase() || '-';
+      });
+      const counted = statuses.filter(x => x !== '-');
+      const present = statuses.filter(x => x === 'P').length;
+      const absent = statuses.filter(x => x === 'A').length;
+      const late = statuses.filter(x => x === 'L').length;
+      const pct = counted.length > 0 ? Math.round(((present + late) / counted.length) * 100) : 0;
+      return [s.roll_number || '-', s.name, ...statuses, counted.length, present, absent, late, `${pct}%`];
+    });
+
+    const csv = [headers, ...rows].map(row => row.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv, { type: 'text/csv;charset=utf-8;' }]);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const monthLabel = selectedMonth === 'all' ? 'all' : new Date(2024, parseInt(selectedMonth), 1).toLocaleString('default', { month: 'long' });
+    a.download = `attendance-${classInfo?.name || 'class'}-${monthLabel}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const normalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : '';
@@ -78,12 +111,20 @@ export default function AttendanceHistory() {
           <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
             <ArrowLeft className="w-4 h-4 text-slate-600" />
           </button>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="font-bold text-slate-800">Attendance History</h1>
             <p className="text-xs text-slate-500">
               {classInfo?.name}{classInfo?.section ? ` — Section ${classInfo.section}` : ''}
             </p>
           </div>
+          <button
+            onClick={downloadCSV}
+            disabled={filteredDates.length === 0}
+            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" />
+            CSV
+          </button>
         </div>
       </header>
 

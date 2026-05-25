@@ -377,6 +377,17 @@ export default function ParentDashboard() {
 
         {/* Quick actions */}
         <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => navigate(`${createPageUrl('StudentProgress')}?studentId=${studentId}&classId=${classId}`)
+          }
+            className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-emerald-300 hover:shadow-sm transition-all text-left">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+              <TrendingUp className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-800">Progress</p>
+              <p className="text-xs text-slate-500">Marks & rank</p>
+            </div>
+          </button>
           <button onClick={() => navigate(createPageUrl('Communication'))}
             className="relative bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3 hover:border-purple-300 hover:shadow-sm transition-all text-left">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">

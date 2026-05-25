@@ -4,8 +4,9 @@ import { createPageUrl } from '@/utils';
 import {
   getClassById, getStudentsByClass, getAttendanceByClassInYear,
   getSchoolById, getAcademicYearDates, updateStudent, generateParentCode,
+  getExamsByClass, getMarksByExams,
 } from '@/lib/db';
-import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText, TrendingUp } from 'lucide-react';
 
 export default function ViewStudents() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function ViewStudents() {
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [regeneratingId, setRegeneratingId] = useState(null);
+  const [ranks, setRanks] = useState({});
 
   useEffect(() => { loadData(); }, []);
 
@@ -32,8 +34,29 @@ export default function ViewStudents() {
       setStudents(studs);
       const school = cls?.school_id ? await getSchoolById(cls.school_id).catch(() => null) : null;
       const { start, end } = getAcademicYearDates(school);
-      const att = await getAttendanceByClassInYear(classId, start, end);
+      const [att, exams] = await Promise.all([
+        getAttendanceByClassInYear(classId, start, end),
+        getExamsByClass(classId),
+      ]);
       setAttendance(att);
+
+      // Calculate class ranks from exam marks
+      const examIds = exams.map(e => e.id);
+      if (examIds.length && studs.length) {
+        const allMarks = await getMarksByExams(examIds);
+        const scores = studs.map(s => {
+          let obt = 0, mx = 0;
+          exams.forEach(e => {
+            const m = allMarks.find(mk => mk.exam_id === e.id && mk.student_id === s.id);
+            if (m) { obt += Number(m.marks_obtained); mx += Number(e.max_marks) || 100; }
+          });
+          return { id: s.id, pct: mx > 0 ? obt / mx : 0 };
+        });
+        scores.sort((a, b) => b.pct - a.pct);
+        const rankMap = {};
+        scores.forEach((s, i) => { rankMap[s.id] = i + 1; });
+        setRanks(rankMap);
+      }
     } catch (err) {
       console.error('ViewStudents error:', err);
     }
@@ -158,14 +181,32 @@ export default function ViewStudents() {
                   </div>
                 </div>
 
-                {/* Report card link */}
-                <button
-                  onClick={() => navigate(`${createPageUrl('ReportCard')}?studentId=${student.id}&classId=${classId}`)}
-                  className="w-full flex items-center justify-center gap-2 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg px-3 py-2 text-xs font-semibold transition-colors mb-2"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  View Report Card
-                </button>
+                {/* Rank badge */}
+                {ranks[student.id] && (
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-xs font-bold bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                      Rank #{ranks[student.id]} of {filtered.length}
+                    </span>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <button
+                    onClick={() => navigate(`${createPageUrl('StudentProgress')}?studentId=${student.id}&classId=${classId}`)}
+                    className="flex items-center justify-center gap-1.5 border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
+                  >
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    Progress
+                  </button>
+                  <button
+                    onClick={() => navigate(`${createPageUrl('ReportCard')}?studentId=${student.id}&classId=${classId}`)}
+                    className="flex items-center justify-center gap-1.5 border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Report Card
+                  </button>
+                </div>
 
                 {/* Parent code row */}
                 <div className="flex items-center gap-2 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">

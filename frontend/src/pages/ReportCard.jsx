@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getStudentsByClass, getAttendanceByClassInYear,
-  getExamsByClass, getMarksByStudent, getClassById,
+  getExamsByClass, getMarksByStudent, getMarksByExams, getClassById,
   getSchoolById, getAcademicYearDates,
 } from '@/lib/db';
 import { ArrowLeft, Loader2, Printer, GraduationCap } from 'lucide-react';
@@ -48,6 +48,8 @@ export default function ReportCard() {
   const [exams, setExams] = useState([]);
   const [marks, setMarks] = useState([]);
   const [yearLabel, setYearLabel] = useState('');
+  const [rank, setRank] = useState(null);
+  const [totalStudents, setTotalStudents] = useState(0);
 
   useEffect(() => { load(); }, []);
 
@@ -73,6 +75,24 @@ export default function ReportCard() {
       setAttendance(att.filter(r => r.student_id === studentId));
       setExams(examList);
       setMarks(studentMarks);
+      setTotalStudents(students.length);
+
+      // Calculate class rank
+      const examIds = examList.map(e => e.id);
+      if (examIds.length && students.length) {
+        const allMarks = await getMarksByExams(examIds);
+        const scores = students.map(s => {
+          let obt = 0, mx = 0;
+          examList.forEach(e => {
+            const m = allMarks.find(mk => mk.exam_id === e.id && mk.student_id === s.id);
+            if (m) { obt += Number(m.marks_obtained); mx += Number(e.max_marks) || 100; }
+          });
+          return { id: s.id, pct: mx > 0 ? obt / mx : 0 };
+        });
+        scores.sort((a, b) => b.pct - a.pct);
+        const r = scores.findIndex(s => s.id === studentId) + 1;
+        if (r > 0) setRank(r);
+      }
     } catch (err) {
       console.error('ReportCard load error:', err);
     }
@@ -156,6 +176,7 @@ export default function ReportCard() {
               <Detail label="Roll Number" value={student.roll_number || '—'} />
               <Detail label="Admission No." value={student.admission_number || '—'} />
               {student.parent_name && <Detail label="Parent Name" value={student.parent_name} />}
+              {rank && <Detail label="Class Rank" value={`#${rank} of ${totalStudents} students`} />}
               <Detail label="Date Printed"
                 value={new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} />
             </div>
