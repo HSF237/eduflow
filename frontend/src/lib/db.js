@@ -351,6 +351,23 @@ export const getFcmTokenForStudent = async (studentId) => {
   return d.exists() ? d.data().token : null;
 };
 
+// ── Substitute Log ────────────────────────────────────────────────────────────
+export const createSubstituteEntry = async (data) => {
+  const ref = await addDoc(collection(db, 'substitute_log'), { ...data, created_at: serverTimestamp() });
+  return { id: ref.id, ...data };
+};
+export const getSubstitutesByDate = async (schoolId, date) => {
+  const q = query(collection(db, 'substitute_log'), where('school_id', '==', schoolId), where('date', '==', date));
+  return snapAll(await getDocs(q));
+};
+export const getSubstitutesBySchool = async (schoolId) => {
+  const q = query(collection(db, 'substitute_log'), where('school_id', '==', schoolId));
+  return sortBy(snapAll(await getDocs(q)), 'date', 'desc');
+};
+export const deleteSubstituteEntry = async (id) => {
+  await deleteDoc(doc(db, 'substitute_log', id));
+};
+
 // ── PTM Events ────────────────────────────────────────────────────────────────
 export const createPtmEvent = async (data) => {
   const ref = await addDoc(collection(db, 'ptm_events'), { ...data, created_at: serverTimestamp() });

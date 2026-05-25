@@ -168,6 +168,9 @@ export default function PrincipalDashboard() {
           <button onClick={() => navigate(createPageUrl('ClassComparison'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
             <BarChart2 size={16} /> <span>Class Comparison</span>
           </button>
+          <button onClick={() => navigate(createPageUrl('SubstituteLog'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <UserCog size={16} /> <span>Substitute Log</span>
+          </button>
         </div>
 
         {/* Tabs */}
