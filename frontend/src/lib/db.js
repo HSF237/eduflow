@@ -350,3 +350,20 @@ export const getFcmTokenForStudent = async (studentId) => {
   const d = await getDoc(doc(db, 'fcm_tokens', studentId));
   return d.exists() ? d.data().token : null;
 };
+
+// ── PTM Events ────────────────────────────────────────────────────────────────
+export const createPtmEvent = async (data) => {
+  const ref = await addDoc(collection(db, 'ptm_events'), { ...data, created_at: serverTimestamp() });
+  return { id: ref.id, ...data };
+};
+export const getPtmByClass = async (classId) => {
+  const q = query(collection(db, 'ptm_events'), where('class_id', '==', classId));
+  return sortBy(snapAll(await getDocs(q)), 'date', 'desc');
+};
+export const updatePtmEvent = async (id, data) => {
+  await updateDoc(doc(db, 'ptm_events', id), data);
+  return { id, ...data };
+};
+export const deletePtmEvent = async (id) => {
+  await deleteDoc(doc(db, 'ptm_events', id));
+};

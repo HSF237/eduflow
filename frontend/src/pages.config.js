@@ -25,6 +25,7 @@ import ParentDashboard from './pages/ParentDashboard';
 import ParentLogin from './pages/ParentLogin';
 import PrincipalDashboard from './pages/PrincipalDashboard';
 import PrincipalSettings from './pages/PrincipalSettings';
+import PtmSchedule from './pages/PtmSchedule';
 import Reports from './pages/Reports';
 import ReviewLeave from './pages/ReviewLeave';
 import Register from './pages/Register';
@@ -67,6 +68,7 @@ export const PAGES = {
     "ParentLogin": ParentLogin,
     "PrincipalDashboard": PrincipalDashboard,
     "PrincipalSettings": PrincipalSettings,
+    "PtmSchedule": PtmSchedule,
     "Reports": Reports,
     "Register": Register,
     "ReportCard": ReportCard,

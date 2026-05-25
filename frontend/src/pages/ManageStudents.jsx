@@ -33,7 +33,7 @@ export default function ManageStudents() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
-  const emptyForm = { name: '', roll_number: '', admission_number: '', class_id: '', parent_name: '' };
+  const emptyForm = { name: '', roll_number: '', admission_number: '', class_id: '', parent_name: '', dob: '' };
   const [formData, setFormData] = useState(emptyForm);
 
   useEffect(() => { if (!isLoadingAuth) loadData(authUser); }, [isLoadingAuth, authUser]);
@@ -59,7 +59,7 @@ export default function ManageStudents() {
   const openAddDialog = () => { setEditingStudent(null); setFormData(emptyForm); setDialogOpen(true); };
   const openEditDialog = (s) => {
     setEditingStudent(s);
-    setFormData({ name: s.name || '', roll_number: s.roll_number || '', admission_number: s.admission_number || '', class_id: s.class_id || '', parent_name: s.parent_name || '' });
+    setFormData({ name: s.name || '', roll_number: s.roll_number || '', admission_number: s.admission_number || '', class_id: s.class_id || '', parent_name: s.parent_name || '', dob: s.dob || '' });
     setDialogOpen(true);
   };
   const closeDialog = () => { setDialogOpen(false); setEditingStudent(null); setFormData(emptyForm); };
@@ -69,20 +69,16 @@ export default function ManageStudents() {
     if (!formData.name.trim()) return;
     setSubmitting(true);
     try {
+      const sharedFields = {
+        name: formData.name.trim(), roll_number: formData.roll_number.trim(),
+        admission_number: formData.admission_number.trim(),
+        class_id: formData.class_id || null, parent_name: formData.parent_name.trim(),
+        dob: formData.dob || null,
+      };
       if (editingStudent) {
-        await updateStudent(editingStudent.id, {
-          name: formData.name.trim(), roll_number: formData.roll_number.trim(),
-          admission_number: formData.admission_number.trim(),
-          class_id: formData.class_id || null, parent_name: formData.parent_name.trim(),
-        });
+        await updateStudent(editingStudent.id, sharedFields);
       } else {
-        await createStudent({
-          school_id: schoolId, name: formData.name.trim(),
-          roll_number: formData.roll_number.trim(),
-          admission_number: formData.admission_number.trim(),
-          class_id: formData.class_id || null, parent_name: formData.parent_name.trim(),
-          engagement_score: 100, status: 'Active',
-        });
+        await createStudent({ school_id: schoolId, ...sharedFields, engagement_score: 100, status: 'Active' });
       }
       await loadData(authUser);
       closeDialog();
@@ -301,6 +297,12 @@ export default function ManageStudents() {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400" />
                 </div>
               ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Date of Birth</label>
+                <input type="date" value={formData.dob}
+                  onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Class</label>

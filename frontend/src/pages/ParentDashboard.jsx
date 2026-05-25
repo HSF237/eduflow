@@ -5,6 +5,7 @@ import {
   getStudentsByClass, getAttendanceByClassInYear, getMessages,
   getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById, getDiaryByClass,
   getSchoolById, getAcademicYearDates, getStudentByParentCode, getExamScheduleByClass,
+  getPtmByClass,
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import {
@@ -83,6 +84,8 @@ export default function ParentDashboard() {
   const [classInfo, setClassInfo] = useState(null);
   const [todayDiary, setTodayDiary] = useState([]);
   const [examSchedule, setExamSchedule] = useState([]);
+  const [nextPtm, setNextPtm] = useState(null);
+  const [isBirthday, setIsBirthday] = useState(false);
 
   // Sibling switcher
   const [linkedStudents, setLinkedStudents] = useState([]);
@@ -140,7 +143,7 @@ export default function ParentDashboard() {
       const school = schoolId ? await safe(getSchoolById(schoolId), null) : null;
       const { start, end } = getAcademicYearDates(school);
 
-      const [students, attendance, messages, hw, tt, ann, cls, diary, examSched] = await withTimeout(
+      const [students, attendance, messages, hw, tt, ann, cls, diary, examSched, ptmEvents] = await withTimeout(
         Promise.all([
           classId ? safe(getStudentsByClass(classId), []) : Promise.resolve([]),
           classId ? safe(getAttendanceByClassInYear(classId, start, end), []) : Promise.resolve([]),
@@ -151,9 +154,10 @@ export default function ParentDashboard() {
           classId ? safe(getClassById(classId), null) : Promise.resolve(null),
           classId ? safe(getDiaryByClass(classId), []) : Promise.resolve([]),
           classId ? safe(getExamScheduleByClass(classId), []) : Promise.resolve([]),
+          classId ? safe(getPtmByClass(classId), []) : Promise.resolve([]),
         ]),
         12000,
-        [[], [], [], [], null, [], null, [], []]
+        [[], [], [], [], null, [], null, [], [], []]
       );
       setClassInfo(cls);
 
@@ -207,6 +211,17 @@ export default function ParentDashboard() {
         .filter(e => e.date >= todayStr)
         .sort((a, b) => a.date > b.date ? 1 : -1);
       setExamSchedule(upcomingExams);
+
+      // Next PTM
+      const upcoming = (ptmEvents || []).filter(e => e.date >= todayStr).sort((a, b) => a.date > b.date ? 1 : -1);
+      setNextPtm(upcoming[0] || null);
+
+      // Birthday check
+      const me = students.find(s => s.id === studentId);
+      if (me?.dob) {
+        const dob = new Date(me.dob + 'T00:00:00');
+        setIsBirthday(dob.getMonth() === new Date().getMonth() && dob.getDate() === new Date().getDate());
+      }
     } catch (err) {
       console.error('Error loading parent dashboard:', err);
     }
@@ -391,6 +406,15 @@ export default function ParentDashboard() {
           </div>
         )}
 
+        {/* Birthday banner */}
+        {isBirthday && (
+          <div className="bg-gradient-to-r from-pink-500 to-rose-500 rounded-2xl p-4 text-white text-center shadow-md">
+            <p className="text-2xl mb-1">🎂</p>
+            <p className="font-extrabold text-lg">Happy Birthday, {student?.name || studentName}!</p>
+            <p className="text-sm text-pink-100 mt-0.5">Wishing you a wonderful day full of joy!</p>
+          </div>
+        )}
+
         {/* Attendance % hero card */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex items-center gap-5">
           <div className={`w-20 h-20 rounded-full border-4 flex items-center justify-center shrink-0 ${
@@ -542,6 +566,29 @@ export default function ParentDashboard() {
             </div>
           )}
         </div>
+
+        {/* PTM Notice */}
+        {nextPtm && (
+          <div className="bg-rose-50 border border-rose-200 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <CalendarCheck className="w-4 h-4 text-rose-500" />
+              <h3 className="text-sm font-bold text-rose-700">Parent-Teacher Meeting</h3>
+            </div>
+            <p className="font-bold text-slate-800 text-base">
+              {new Date(nextPtm.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </p>
+            {(nextPtm.time_from || nextPtm.time_to) && (
+              <p className="text-sm text-rose-600 font-semibold mt-0.5">
+                {(() => {
+                  const fmt = t => { if (!t) return null; const [h, m] = t.split(':'); const hr = parseInt(h); return `${hr > 12 ? hr - 12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`; };
+                  return `${fmt(nextPtm.time_from)}${nextPtm.time_to ? ` – ${fmt(nextPtm.time_to)}` : ''}`;
+                })()}
+              </p>
+            )}
+            {nextPtm.venue && <p className="text-xs text-slate-500 mt-1"><span className="font-semibold">Venue:</span> {nextPtm.venue}</p>}
+            {nextPtm.notes && <p className="text-xs text-slate-500 mt-0.5 italic">{nextPtm.notes}</p>}
+          </div>
+        )}
 
         {/* Today's Diary */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">

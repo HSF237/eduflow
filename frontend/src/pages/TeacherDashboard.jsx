@@ -13,7 +13,7 @@ import {
   GraduationCap, Bell, Settings, LogOut, Users, Clock, BookOpen,
   AlertTriangle, ClipboardCheck, FileText, UserPlus, History,
   BarChart2, MessageSquare, BookMarked, CheckCircle, Loader2,
-  CalendarDays, BookCopy, Megaphone,
+  CalendarDays, BookCopy, Megaphone, Cake,
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -105,6 +105,23 @@ export default function TeacherDashboard() {
   // At-risk: students who have < 75% attendance — we approximate with engagement_score or
   // derive from attendance. Since we only load today's att, we use student.engagement_score.
   const atRiskStudents = students.filter((s) => (s.engagement_score ?? 100) < 75);
+
+  const upcomingBirthdays = (() => {
+    const now = new Date();
+    return students
+      .filter(s => s.dob)
+      .map(s => {
+        const dob = new Date(s.dob + 'T00:00:00');
+        const birthday = new Date(now.getFullYear(), dob.getMonth(), dob.getDate());
+        if (birthday < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+          birthday.setFullYear(now.getFullYear() + 1);
+        }
+        const days = Math.round((birthday - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / (1000 * 60 * 60 * 24));
+        return { ...s, daysUntil: days };
+      })
+      .filter(s => s.daysUntil <= 7)
+      .sort((a, b) => a.daysUntil - b.daysUntil);
+  })();
 
   const selectedClass = classes.find((c) => c.id === selectedClassId);
   const classLabel = selectedClass
@@ -402,7 +419,40 @@ export default function TeacherDashboard() {
             <CalendarDays className="w-4 h-4 shrink-0" />
             <span>Exam Schedule</span>
           </button>
+
+          <button
+            onClick={() => navigate(`${createPageUrl('PtmSchedule')}?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
+          >
+            <Users className="w-4 h-4 shrink-0" />
+            <span>PTM Schedule</span>
+          </button>
         </div>
+
+        {/* ── UPCOMING BIRTHDAYS ── */}
+        {upcomingBirthdays.length > 0 && (
+          <div className="bg-gradient-to-r from-pink-50 to-rose-50 border border-rose-200 rounded-2xl p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Cake className="w-4 h-4 text-rose-500" />
+              <h3 className="text-sm font-bold text-rose-700">Upcoming Birthdays (next 7 days)</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {upcomingBirthdays.map(s => (
+                <div key={s.id} className="flex items-center gap-2 bg-white border border-rose-100 rounded-xl px-3 py-2 shadow-sm">
+                  <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                    <span className="text-sm font-extrabold text-rose-500">{s.name.charAt(0)}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{s.name}</p>
+                    <p className="text-xs text-rose-500 font-medium">
+                      {s.daysUntil === 0 ? '🎂 Today!' : s.daysUntil === 1 ? 'Tomorrow' : `In ${s.daysUntil} days`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── BOTTOM CARDS ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
