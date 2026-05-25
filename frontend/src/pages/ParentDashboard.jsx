@@ -4,13 +4,13 @@ import { createPageUrl } from '@/utils';
 import {
   getStudentsByClass, getAttendanceByClassInYear, getMessages,
   getHomeworkByClass, getTimetable, getAnnouncementsByClass, getClassById, getDiaryByClass,
-  getSchoolById, getAcademicYearDates, getStudentByParentCode,
+  getSchoolById, getAcademicYearDates, getStudentByParentCode, getExamScheduleByClass,
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import {
   GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
   TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle,
-  BookCopy, CalendarDays, Megaphone, BookOpen, UserPlus, X, KeyRound, Plus,
+  BookCopy, CalendarDays, Megaphone, BookOpen, UserPlus, X, KeyRound, Plus, CalendarCheck,
 } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, color }) {
@@ -27,6 +27,46 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const DAILY_QUOTES = [
+  "The secret of getting ahead is getting started.",
+  "Education is the passport to the future.",
+  "Success is the sum of small efforts repeated day in and day out.",
+  "Believe you can and you're halfway there.",
+  "Hard work beats talent when talent doesn't work hard.",
+  "Every expert was once a beginner.",
+  "The more that you read, the more things you will know.",
+  "Don't watch the clock; do what it does. Keep going.",
+  "You don't have to be great to start, but you have to start to be great.",
+  "Learning is not attained by chance; it must be sought with ardor.",
+  "The beautiful thing about learning is that no one can take it away from you.",
+  "Strive for progress, not perfection.",
+  "Push yourself, because no one else is going to do it for you.",
+  "Dream it. Wish it. Do it.",
+  "Great things never come from comfort zones.",
+  "Wake up with determination. Go to bed with satisfaction.",
+  "Do something today that your future self will thank you for.",
+  "Little things make big days.",
+  "It's going to be hard, but hard is not impossible.",
+  "Don't stop when you're tired. Stop when you're done.",
+  "Wake up. Be awesome. Repeat.",
+  "Study hard, for the well is deep.",
+  "An investment in knowledge pays the best interest.",
+  "The roots of education are bitter, but the fruit is sweet.",
+  "Today a reader, tomorrow a leader.",
+  "Genius is one percent inspiration and ninety-nine percent perspiration.",
+  "You are braver than you believe, stronger than you seem.",
+  "Start where you are. Use what you have. Do what you can.",
+  "It always seems impossible until it's done.",
+  "Keep going. Everything you need will come to you at the perfect time.",
+];
+
+const getDayOfYear = () => {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  return Math.floor((now - start) / (1000 * 60 * 60 * 24));
+};
+const todayQuote = DAILY_QUOTES[getDayOfYear() % DAILY_QUOTES.length];
+
 export default function ParentDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -42,6 +82,7 @@ export default function ParentDashboard() {
   const [announcements, setAnnouncements] = useState([]);
   const [classInfo, setClassInfo] = useState(null);
   const [todayDiary, setTodayDiary] = useState([]);
+  const [examSchedule, setExamSchedule] = useState([]);
 
   // Sibling switcher
   const [linkedStudents, setLinkedStudents] = useState([]);
@@ -99,7 +140,7 @@ export default function ParentDashboard() {
       const school = schoolId ? await safe(getSchoolById(schoolId), null) : null;
       const { start, end } = getAcademicYearDates(school);
 
-      const [students, attendance, messages, hw, tt, ann, cls, diary] = await withTimeout(
+      const [students, attendance, messages, hw, tt, ann, cls, diary, examSched] = await withTimeout(
         Promise.all([
           classId ? safe(getStudentsByClass(classId), []) : Promise.resolve([]),
           classId ? safe(getAttendanceByClassInYear(classId, start, end), []) : Promise.resolve([]),
@@ -109,9 +150,10 @@ export default function ParentDashboard() {
           classId ? safe(getAnnouncementsByClass(classId), []) : Promise.resolve([]),
           classId ? safe(getClassById(classId), null) : Promise.resolve(null),
           classId ? safe(getDiaryByClass(classId), []) : Promise.resolve([]),
+          classId ? safe(getExamScheduleByClass(classId), []) : Promise.resolve([]),
         ]),
         12000,
-        [[], [], [], [], null, [], null, []]
+        [[], [], [], [], null, [], null, [], []]
       );
       setClassInfo(cls);
 
@@ -159,6 +201,12 @@ export default function ParentDashboard() {
       // Diary: today's entries only
       const todayStr = new Date().toISOString().split('T')[0];
       setTodayDiary((diary || []).filter(d => d.date === todayStr));
+
+      // Exam schedule: upcoming only, sorted by date
+      const upcomingExams = (examSched || [])
+        .filter(e => e.date >= todayStr)
+        .sort((a, b) => a.date > b.date ? 1 : -1);
+      setExamSchedule(upcomingExams);
     } catch (err) {
       console.error('Error loading parent dashboard:', err);
     }
@@ -516,6 +564,46 @@ export default function ParentDashboard() {
                   <p className="text-sm text-slate-700 mt-1.5 leading-relaxed">{entry.content}</p>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Exam Schedule */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <CalendarCheck className="w-4 h-4 text-indigo-500" />
+            <h3 className="text-sm font-bold text-slate-800">Upcoming Exams</h3>
+          </div>
+          {/* Daily quote */}
+          <p className="text-[11px] italic text-slate-400 mb-4 leading-relaxed">"{todayQuote}"</p>
+          {examSchedule.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-3">No upcoming exams scheduled</p>
+          ) : (
+            <div className="space-y-2">
+              {examSchedule.map((e, i) => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const days = Math.round((new Date(e.date + 'T00:00:00') - new Date(todayStr + 'T00:00:00')) / (1000 * 60 * 60 * 24));
+                return (
+                  <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+                    <div className={`shrink-0 w-11 h-11 rounded-xl flex flex-col items-center justify-center text-white font-bold text-xs ${
+                      days === 0 ? 'bg-red-500' : days <= 3 ? 'bg-orange-500' : 'bg-indigo-500'
+                    }`}>
+                      <span className="text-base font-extrabold leading-none">{days === 0 ? '!' : days}</span>
+                      <span className="text-[9px] opacity-80">{days === 0 ? 'today' : 'days'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">{e.subject}</span>
+                        <span className="text-sm font-semibold text-slate-800 truncate">{e.title}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        {e.notes ? ` · ${e.notes}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

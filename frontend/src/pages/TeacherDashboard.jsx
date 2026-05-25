@@ -394,6 +394,14 @@ export default function TeacherDashboard() {
             <BookOpen className="w-4 h-4 shrink-0" />
             <span>Daily Diary</span>
           </button>
+
+          <button
+            onClick={() => navigate(`${createPageUrl('ExamSchedule')}?classId=${selectedClassId}`)}
+            className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-3 py-3 sm:py-2 rounded-lg text-sm font-semibold transition-colors whitespace-normal text-center leading-tight"
+          >
+            <CalendarDays className="w-4 h-4 shrink-0" />
+            <span>Exam Schedule</span>
+          </button>
         </div>
 
         {/* ── BOTTOM CARDS ── */}

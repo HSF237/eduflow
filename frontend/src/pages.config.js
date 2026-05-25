@@ -1,5 +1,7 @@
 import Announcements from './pages/Announcements';
+import ClassComparison from './pages/ClassComparison';
 import Diary from './pages/Diary';
+import ExamSchedule from './pages/ExamSchedule';
 import ReportCard from './pages/ReportCard';
 import StudentProgress from './pages/StudentProgress';
 import ApplyLeave from './pages/ApplyLeave';
@@ -42,6 +44,7 @@ import __Layout from './Layout.jsx';
 export const PAGES = {
     "Announcements": Announcements,
     "ApplyLeave": ApplyLeave,
+    "ClassComparison": ClassComparison,
     "AttendanceAnalytics": AttendanceAnalytics,
     "AttendanceApproval": AttendanceApproval,
     "AttendanceHistory": AttendanceHistory,
@@ -50,6 +53,7 @@ export const PAGES = {
     "Diary": Diary,
     "EditAttendance": EditAttendance,
     "EnterMarks": EnterMarks,
+    "ExamSchedule": ExamSchedule,
     "Home": Home,
     "Homework": Homework,
     "Login": Login,

@@ -322,6 +322,19 @@ export const deleteDiaryEntry = async (id) => {
   await deleteDoc(doc(db, 'diary', id));
 };
 
+// ── Exam Schedule ─────────────────────────────────────────────────────────────
+export const addExamScheduleEntry = async (data) => {
+  const ref = await addDoc(collection(db, 'exam_schedule'), { ...data, created_at: serverTimestamp() });
+  return { id: ref.id, ...data };
+};
+export const getExamScheduleByClass = async (classId) => {
+  const q = query(collection(db, 'exam_schedule'), where('class_id', '==', classId));
+  return sortBy(snapAll(await getDocs(q)), 'date');
+};
+export const deleteExamScheduleEntry = async (id) => {
+  await deleteDoc(doc(db, 'exam_schedule', id));
+};
+
 // ── FCM Tokens ────────────────────────────────────────────────────────────────
 export const getFcmTokensForClass = async (classId) => {
   const students = await getStudentsByClass(classId);
