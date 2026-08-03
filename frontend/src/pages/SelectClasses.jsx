@@ -25,15 +25,37 @@ export default function SelectClasses() {
 
       const teacherData = await getTeacherByUserId(user.uid);
       setTeacher(teacherData);
-      setSchoolName(teacherData?.schools?.name || '');
+      setSchoolName(teacherData?.schools?.name || teacherData?.school_name || '');
 
+      // 1. Try teacher's school_id first
       let classData = [];
       if (teacherData?.school_id) {
         classData = await getClasses(teacherData.school_id).catch(() => []);
       }
+
+      // 2. If still empty, fetch ALL classes without a filter (hits Firestore + all local keys)
       if (!classData || classData.length === 0) {
         classData = await getClasses().catch(() => []);
       }
+
+      // 3. Always supplement with every classes_* key in localStorage to catch any ID mismatch
+      const localMap = new Map((classData || []).map(c => [c.id, c]));
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('classes_')) {
+          try {
+            const list = JSON.parse(localStorage.getItem(key));
+            if (Array.isArray(list)) list.forEach(c => localMap.set(c.id, c));
+          } catch (e) {}
+        }
+      }
+      // Also check all_local_classes
+      try {
+        const allLocal = localStorage.getItem('all_local_classes');
+        if (allLocal) JSON.parse(allLocal).forEach(c => localMap.set(c.id, c));
+      } catch (e) {}
+
+      classData = Array.from(localMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
       setClasses(classData || []);
 
