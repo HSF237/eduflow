@@ -217,7 +217,6 @@ export default function ParentDashboard() {
       setNextPtm(upcoming[0] || null);
 
       // Birthday check
-      const me = students.find(s => s.id === studentId);
       if (me?.dob) {
         const dob = new Date(me.dob + 'T00:00:00');
         setIsBirthday(dob.getMonth() === new Date().getMonth() && dob.getDate() === new Date().getDate());
