@@ -161,17 +161,17 @@ export default function JoinSchool() {
                       placeholder="e.g. ABC123"
                       className="w-full h-12 pl-10 border border-slate-300 rounded-xl text-center text-lg font-mono tracking-widest uppercase focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       value={code}
-                      onChange={(e) => setCode(e.target.value.toUpperCase())}
-                      maxLength={6}
+                      onChange={(e) => setCode(e.target.value.toUpperCase().trim())}
+                      maxLength={12}
                       required
                     />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1.5">Ask your principal for the 6-character join code</p>
+                  <p className="text-xs text-slate-400 mt-1.5">Enter the school join code provided by your principal</p>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={submitting || code.length < 6}
+                  disabled={submitting || !code.trim()}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
                 >
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Joining...</> : 'Join School'}
