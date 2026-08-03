@@ -22,11 +22,14 @@ export default function RoleSelection() {
     // Firebase user already logged in — figure out their role
     if (user) {
       (async () => {
-        const school = await getSchoolByPrincipal(user.uid);
-        if (school) { navigate(createPageUrl('PrincipalDashboard'), { replace: true }); return; }
-        const teacher = await getTeacherByUserId(user.uid);
-        if (teacher) { navigate(createPageUrl('TeacherDashboard'), { replace: true }); return; }
-        // New Google user with no role yet — let them choose below
+        try {
+          const school = await getSchoolByPrincipal(user.uid);
+          if (school) { navigate(createPageUrl('PrincipalDashboard'), { replace: true }); return; }
+          const teacher = await getTeacherByUserId(user.uid);
+          if (teacher) { navigate(createPageUrl('TeacherDashboard'), { replace: true }); return; }
+        } catch (e) {
+          console.warn('Role lookup error:', e);
+        }
       })();
     }
   }, [isLoadingAuth, user]);

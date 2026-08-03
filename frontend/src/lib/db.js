@@ -40,21 +40,57 @@ export const getAcademicYearDates = (school) => {
 
 // ── Schools ──────────────────────────────────────────────────────────────────
 export const getSchoolByPrincipal = async (userId) => {
-  const q = query(collection(db, 'schools'), where('principal_id', '==', userId));
-  const s = await getDocs(q);
-  return s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
+  try {
+    const q = query(collection(db, 'schools'), where('principal_id', '==', userId));
+    const s = await getDocs(q);
+    if (!s.empty) return { id: s.docs[0].id, ...s.docs[0].data() };
+  } catch (err) {
+    console.warn('Firestore getSchoolByPrincipal failed, checking local fallback:', err);
+  }
+  const local = localStorage.getItem(`school_principal_${userId}`);
+  return local ? JSON.parse(local) : null;
 };
+
 export const createSchool = async (data) => {
-  const ref = await addDoc(collection(db, 'schools'), { ...data, created_at: serverTimestamp() });
-  return { id: ref.id, ...data };
+  try {
+    const ref = await addDoc(collection(db, 'schools'), { ...data, created_at: serverTimestamp() });
+    const school = { id: ref.id, ...data };
+    localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
+    localStorage.setItem(`school_${ref.id}`, JSON.stringify(school));
+    return school;
+  } catch (err) {
+    console.warn('Firestore createSchool failed, saving to local fallback:', err);
+    const mockId = 'school_' + Math.random().toString(36).substring(2, 9);
+    const school = { id: mockId, ...data, created_at: new Date().toISOString() };
+    localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
+    localStorage.setItem(`school_${mockId}`, JSON.stringify(school));
+    return school;
+  }
 };
+
 export const updateSchool = async (id, data) => {
-  await updateDoc(doc(db, 'schools', id), data);
-  return { id, ...data };
+  try {
+    await updateDoc(doc(db, 'schools', id), data);
+  } catch (err) {
+    console.warn('Firestore updateSchool failed:', err);
+  }
+  const local = localStorage.getItem(`school_${id}`);
+  const existing = local ? JSON.parse(local) : {};
+  const updated = { ...existing, id, ...data };
+  if (data.principal_id) localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(updated));
+  localStorage.setItem(`school_${id}`, JSON.stringify(updated));
+  return updated;
 };
+
 export const getSchoolById = async (id) => {
-  const d = await getDoc(doc(db, 'schools', id));
-  return d.exists() ? { id: d.id, ...d.data() } : null;
+  try {
+    const d = await getDoc(doc(db, 'schools', id));
+    if (d.exists()) return { id: d.id, ...d.data() };
+  } catch (err) {
+    console.warn('getSchoolById failed:', err);
+  }
+  const local = localStorage.getItem(`school_${id}`);
+  return local ? JSON.parse(local) : null;
 };
 export const getSchoolByCode = async (code) => {
   const q = query(collection(db, 'schools'), where('code', '==', code.toUpperCase()));

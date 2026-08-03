@@ -16,10 +16,14 @@ export default function Login() {
   const [error, setError] = useState('');
 
   const routeAfterLogin = async (user) => {
-    const school = await getSchoolByPrincipal(user.uid);
+    let school = null;
+    let teacher = null;
+    try { school = await getSchoolByPrincipal(user.uid); } catch (e) { console.warn('School lookup error:', e); }
     if (school) { navigate(createPageUrl('PrincipalDashboard')); return; }
-    const teacher = await getTeacherByUserId(user.uid);
+
+    try { teacher = await getTeacherByUserId(user.uid); } catch (e) { console.warn('Teacher lookup error:', e); }
     if (teacher) { navigate(createPageUrl('TeacherDashboard')); return; }
+
     // New user — pick role
     if (role === 'principal') { navigate(createPageUrl('SetupSchool')); return; }
     if (role === 'teacher')   { navigate(createPageUrl('JoinSchool'));  return; }
@@ -35,10 +39,10 @@ export default function Login() {
       await routeAfterLogin(user);
     } catch (err) {
       const code = err.code;
-      if (code === 'auth/user-not-found' || code === 'auth/invalid-credential')
+      if (code === 'auth/user-not-found')
         setError('No account found with this email. Please sign up first.');
-      else if (code === 'auth/wrong-password')
-        setError('Wrong password. This is the password you created when you signed up — not your Gmail password.');
+      else if (code === 'auth/wrong-password' || code === 'auth/invalid-credential')
+        setError('Invalid email or password. Please check your credentials.');
       else if (code === 'auth/invalid-email')
         setError('Invalid email address.');
       else if (code === 'auth/too-many-requests')
@@ -56,8 +60,11 @@ export default function Login() {
       const { user } = await signInWithPopup(auth, googleProvider);
       await routeAfterLogin(user);
     } catch (err) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError('Google sign-in failed. Please try again.');
+      console.error('Google sign-in error:', err);
+      if (err.code === 'auth/unauthorized-domain') {
+        setError('Domain unauthorized. Add localhost to Firebase Console -> Auth -> Authorized Domains.');
+      } else if (err.code !== 'auth/popup-closed-by-user') {
+        setError(`Google sign-in failed: ${err.message || err.code || 'Please try again.'}`);
       }
     }
     setGoogleLoading(false);

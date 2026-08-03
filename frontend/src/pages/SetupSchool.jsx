@@ -62,7 +62,7 @@ export default function SetupSchool() {
       setExistingSchool(school);
     } catch (error) {
       console.error('Error creating school:', error);
-      alert('Failed to create school. Please try again.');
+      alert(`Failed to create school: ${error.message || 'Please try again.'}`);
     }
     setSubmitting(false);
   };
