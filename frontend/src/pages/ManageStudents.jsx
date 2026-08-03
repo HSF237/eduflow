@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 import { useAuth } from '@/hooks/AuthContext';
 import {
   getStudents, getClasses, createStudent, updateStudent, deleteStudent,
-  getSchoolByPrincipal, generateParentCode,
+  getSchoolByPrincipal, getTeacherByUserId, generateParentCode,
 } from '@/lib/db';
 import {
   ArrowLeft, Plus, Loader2, Users, Trash2, Edit2, Search,
@@ -27,13 +26,17 @@ export default function ManageStudents() {
   const [classes, setClasses] = useState([]);
   const [schoolId, setSchoolId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterClass, setFilterClass] = useState('all');
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const defaultClassId = urlParams.get('classId') || '';
+
+  const [filterClass, setFilterClass] = useState(defaultClassId || 'all');
   const [copiedId, setCopiedId] = useState(null);
   const [regeneratingId, setRegeneratingId] = useState(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
-  const emptyForm = { name: '', roll_number: '', admission_number: '', class_id: '', parent_name: '', dob: '' };
+  const emptyForm = { name: '', roll_number: '', admission_number: '', class_id: defaultClassId, parent_name: '', dob: '' };
   const [formData, setFormData] = useState(emptyForm);
 
   useEffect(() => { if (!isLoadingAuth) loadData(authUser); }, [isLoadingAuth, authUser]);
@@ -41,14 +44,32 @@ export default function ManageStudents() {
   const loadData = async (user) => {
     try {
       if (!user) { navigate(-1); return; }
-      const school = await getSchoolByPrincipal(user.uid);
-      if (!school) { navigate(-1); return; }
-      setSchoolId(school.id);
+      
+      let targetSchoolId = null;
+      const school = await getSchoolByPrincipal(user.uid).catch(() => null);
+      if (school?.id) {
+        targetSchoolId = school.id;
+      } else {
+        const teacher = await getTeacherByUserId(user.uid).catch(() => null);
+        if (teacher?.school_id) {
+          targetSchoolId = teacher.school_id;
+        }
+      }
+
+      if (!targetSchoolId) {
+        const defaultSchool = localStorage.getItem('default_created_school');
+        if (defaultSchool) {
+          try { targetSchoolId = JSON.parse(defaultSchool).id; } catch (e) {}
+        }
+      }
+      if (!targetSchoolId) targetSchoolId = 'super_admin_school';
+
+      setSchoolId(targetSchoolId);
       const [studentData, classData] = await Promise.all([
-        getStudents(school.id), getClasses(school.id),
+        getStudents(targetSchoolId), getClasses(targetSchoolId),
       ]);
-      setStudents(studentData);
-      setClasses(classData);
+      setStudents(studentData || []);
+      setClasses(classData || []);
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {

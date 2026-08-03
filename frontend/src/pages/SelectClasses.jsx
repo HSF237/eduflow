@@ -24,21 +24,28 @@ export default function SelectClasses() {
       if (!user) { navigate('/login?role=teacher'); return; }
 
       const teacherData = await getTeacherByUserId(user.uid);
-      if (!teacherData?.school_id) { navigate(createPageUrl('JoinSchool')); return; }
-
       setTeacher(teacherData);
-      setSchoolName(teacherData.schools?.name || '');
+      setSchoolName(teacherData?.schools?.name || '');
 
-      const classData = await getClasses(teacherData.school_id);
-      setClasses(classData);
+      let classData = [];
+      if (teacherData?.school_id) {
+        classData = await getClasses(teacherData.school_id).catch(() => []);
+      }
+      if (!classData || classData.length === 0) {
+        classData = await getClasses().catch(() => []);
+      }
 
-      // Pre-select any classes already assigned to this teacher
-      const alreadyAssigned = classData.filter(c => c.teacher_id === teacherData.id).map(c => c.id);
+      setClasses(classData || []);
+
+      const alreadyAssigned = (classData || [])
+        .filter(c => c.teacher_id === teacherData?.id)
+        .map(c => c.id);
       setSelected(alreadyAssigned);
     } catch (err) {
       console.error('SelectClasses load error:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const toggle = (id) =>

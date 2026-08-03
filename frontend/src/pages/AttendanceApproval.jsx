@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { getSchoolByPrincipal, getClasses, getAttendanceByClass } from '@/lib/db';
-import { ArrowLeft, Loader2, Calendar, Edit2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar, Edit2 } from 'lucide-react';
 
 const DATE_RANGES = [
   { label: 'Today', value: '0' },

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
   getTeacherByUserId, getSchoolByPrincipal,
-  getLeaveRequests, getLeavesByClass, updateLeaveStatus,
+  getLeaveRequests, updateLeaveStatus,
   getStudents, getClasses, getFcmTokenForStudent,
 } from '@/lib/db';
 import { sendPush } from '@/lib/fcm';

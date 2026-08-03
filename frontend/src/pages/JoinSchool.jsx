@@ -132,6 +132,19 @@ export default function JoinSchool() {
                 </p>
               </div>
 
+              {authUser?.email?.toLowerCase() === 'zerox9861@gmail.com' && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-800">
+                  <span>⚡ Admin Test Gateway:</span>
+                  <button
+                    type="button"
+                    onClick={() => setCode('ADMIN1')}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2.5 py-1 rounded-lg shadow-sm"
+                  >
+                    Auto-Fill "ADMIN1"
+                  </button>
+                </div>
+              )}
+
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-sm">
                   <AlertCircle className="w-4 h-4 shrink-0" />

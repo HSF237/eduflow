@@ -10,7 +10,7 @@ import {
 } from '@/lib/db';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ArrowLeft, Save, Loader2, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, CheckCircle2, Award, Calculator, Sparkles } from 'lucide-react';
 
 const EXAM_TYPES = [
   { key: 'UT', label: 'Unit Test', color: 'bg-blue-500', light: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
@@ -67,9 +67,18 @@ export default function EnterMarks() {
 
       const allClasses = await getClasses(teacherData.school_id);
       const teacherClasses = allClasses.filter(c =>
-        (teacherData.assigned_classes || []).includes(c.id)
+        c.teacher_id === teacherData.id || (teacherData.assigned_classes || []).includes(c.id)
       );
       setClasses(teacherClasses);
+
+      // Auto-preselect class if query param or assigned class exists
+      const urlParams = new URLSearchParams(window.location.search);
+      const paramClassId = urlParams.get('classId');
+      if (paramClassId && teacherClasses.some(c => c.id === paramClassId)) {
+        setSelectedClass(paramClassId);
+      } else if (teacherClasses.length > 0) {
+        setSelectedClass(teacherClasses[0].id);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -293,33 +302,62 @@ export default function EnterMarks() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">
                       Marks Obtained (Out of {selectedExam.max_marks})
                     </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {students.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="text-center py-10 text-slate-400">
+                      <td colSpan={4} className="text-center py-10 text-slate-400">
                         No students in this class.
                       </td>
                     </tr>
                   ) : (
-                    students.map(student => (
-                      <tr key={student.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 text-slate-500">{student.roll_number || '—'}</td>
-                        <td className="px-4 py-3 font-medium text-slate-800">{student.name}</td>
-                        <td className="px-4 py-3">
-                          <input
-                            type="number"
-                            min="0"
-                            max={selectedExam.max_marks}
-                            placeholder="Enter marks"
-                            value={marks[student.id] ?? ''}
-                            onChange={e => setMarks({ ...marks, [student.id]: e.target.value })}
-                            className="w-32 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
-                        </td>
-                      </tr>
-                    ))
+                    students.map((student, idx) => {
+                      const val = marks[student.id];
+                      const numVal = Number(val);
+                      const isEntered = val !== undefined && val !== '';
+                      const isPassing = isEntered && numVal >= (selectedExam.max_marks * 0.33);
+
+                      return (
+                        <tr key={student.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-3 text-slate-500">{student.roll_number || '—'}</td>
+                          <td className="px-4 py-3 font-medium text-slate-800">{student.name}</td>
+                          <td className="px-4 py-3">
+                            <input
+                              id={`mark-input-${idx}`}
+                              type="number"
+                              min="0"
+                              max={selectedExam.max_marks}
+                              placeholder="0"
+                              value={marks[student.id] ?? ''}
+                              onChange={e => setMarks({ ...marks, [student.id]: e.target.value })}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                                  e.preventDefault();
+                                  const next = document.getElementById(`mark-input-${idx + 1}`);
+                                  if (next) next.focus();
+                                } else if (e.key === 'ArrowUp') {
+                                  e.preventDefault();
+                                  const prev = document.getElementById(`mark-input-${idx - 1}`);
+                                  if (prev) prev.focus();
+                                }
+                              }}
+                              className="w-32 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent font-semibold text-slate-900"
+                            />
+                          </td>
+                          <td className="px-4 py-3 text-xs">
+                            {isEntered ? (
+                              <span className={`inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full ${isPassing ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                {isPassing ? 'Pass' : 'Needs Review'}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-medium">Pending</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

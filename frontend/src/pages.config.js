@@ -19,6 +19,7 @@ import JoinSchool from './pages/JoinSchool';
 import ManageClasses from './pages/ManageClasses';
 import ManageExams from './pages/ManageExams';
 import ManageStudents from './pages/ManageStudents';
+import ManageSubjects from './pages/ManageSubjects';
 import MarkAttendance from './pages/MarkAttendance';
 import Notifications from './pages/Notifications';
 import ParentDashboard from './pages/ParentDashboard';
@@ -63,6 +64,7 @@ export const PAGES = {
     "ManageClasses": ManageClasses,
     "ManageExams": ManageExams,
     "ManageStudents": ManageStudents,
+    "ManageSubjects": ManageSubjects,
     "MarkAttendance": MarkAttendance,
     "Notifications": Notifications,
     "ParentDashboard": ParentDashboard,

@@ -3,16 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
 import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, getAttendanceByClass, generateCode, createClass, createStudent } from '@/lib/db';
 import { createPageUrl } from '@/utils';
+import DashboardSidebar from '@/components/DashboardSidebar';
 import {
-  Users, BookOpen, UserCog, Clock, Plus, UserPlus, CheckCircle,
-  AlertTriangle, BarChart2, ClipboardList, GraduationCap, Bell,
-  Settings, LogOut, Copy, Check, X, Loader2
+  Users, BookOpen, UserCog, Clock, CheckCircle,
+  AlertTriangle, GraduationCap, Bell,
+  Settings, LogOut, Copy, Check, X, Loader2, Menu
 } from 'lucide-react';
 
 export default function PrincipalDashboard() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [school, setSchool] = useState(null);
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0, pending: 0 });
@@ -42,16 +44,30 @@ export default function PrincipalDashboard() {
       if (!schoolData) { navigate(createPageUrl('SetupSchool')); return; }
       setSchool(schoolData);
 
-      const [cls, stu, tea, att] = await Promise.all([
-        getClasses(schoolData.id),
-        getStudents(schoolData.id),
-        getTeachers(schoolData.id),
-        getTodayAttendanceSummary(schoolData.id),
-      ]);
-      const attArrays = await Promise.all(cls.map(c => getAttendanceByClass(c.id)));
-      const fullAtt = attArrays.flat();
-      setClasses(cls); setStudents(stu); setTeachers(tea); setTodayAttendance(att); setAllAttendance(fullAtt);
-      setStats({ students: stu.length, classes: cls.length, teachers: tea.length, pending: 0 });
+      const cls = await getClasses(schoolData.id).catch(() => []);
+      const stu = await getStudents(schoolData.id).catch(() => []);
+      const tea = await getTeachers(schoolData.id).catch(() => []);
+      const att = await getTodayAttendanceSummary(schoolData.id).catch(() => []);
+
+      let fullAtt = [];
+      try {
+        if (cls && cls.length > 0) {
+          const attArrays = await Promise.all(cls.map(c => getAttendanceByClass(c.id).catch(() => [])));
+          fullAtt = (attArrays || []).flat();
+        }
+      } catch (e) {}
+
+      setClasses(cls || []);
+      setStudents(stu || []);
+      setTeachers(tea || []);
+      setTodayAttendance(att || []);
+      setAllAttendance(fullAtt);
+      setStats({
+        students: (stu || []).length,
+        classes: (cls || []).length,
+        teachers: (tea || []).length,
+        pending: 0
+      });
     } catch (err) {
       console.error('Dashboard load error:', err);
     } finally {
@@ -108,70 +124,56 @@ export default function PrincipalDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 px-4 sm:px-6 py-3 flex justify-between items-center">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="bg-blue-600 w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-white">
-            <GraduationCap size={20} />
-          </div>
-          <div className="min-w-0">
-            <p className="font-bold text-slate-900 leading-tight truncate text-sm sm:text-base">{user?.displayName || user?.email?.split('@')[0] || 'Principal'}</p>
-            <p className="text-xs text-slate-500 hidden sm:block">Principal Dashboard</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {school && (
-            <button onClick={copyCode} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 border border-slate-200 rounded-lg text-xs sm:text-sm hover:bg-slate-50">
-              <span className="font-bold text-blue-600 tracking-widest">{school.code}</span>
-              {copied ? <Check size={13} className="text-green-500" /> : <Copy size={13} className="text-slate-400" />}
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      <DashboardSidebar
+        role="principal"
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        teacherName={user?.displayName || 'Principal'}
+        schoolName={school?.name}
+        onLogout={handleLogout}
+      />
+
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Header */}
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-20 px-4 sm:px-6 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600 transition-colors"
+              title="Open Navigation Menu"
+            >
+              <Menu size={20} />
             </button>
-          )}
-          <button onClick={() => navigate(createPageUrl('Notifications'))} className="p-2 text-slate-400 hover:text-slate-600"><Bell size={18} /></button>
-          <button onClick={() => navigate(createPageUrl('PrincipalSettings'))} className="p-2 text-slate-400 hover:text-slate-600"><Settings size={18} /></button>
-          <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-slate-600"><LogOut size={18} /></button>
-        </div>
-      </header>
+            <div className="bg-blue-600 w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-white">
+              <GraduationCap size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-slate-900 leading-tight truncate text-sm sm:text-base">{user?.displayName || user?.email?.split('@')[0] || 'Principal'}</p>
+              <p className="text-xs text-slate-500 hidden sm:block">Principal Dashboard</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            {school && (
+              <button onClick={copyCode} className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 border border-slate-200 rounded-lg text-xs sm:text-sm hover:bg-slate-50">
+                <span className="font-bold text-blue-600 tracking-widest">{school.code}</span>
+                {copied ? <Check size={13} className="text-green-500" /> : <Copy size={13} className="text-slate-400" />}
+              </button>
+            )}
+            <button onClick={() => navigate(createPageUrl('Notifications'))} className="p-2 text-slate-400 hover:text-slate-600"><Bell size={18} /></button>
+            <button onClick={() => navigate(createPageUrl('PrincipalSettings'))} className="p-2 text-slate-400 hover:text-slate-600"><Settings size={18} /></button>
+            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-slate-600"><LogOut size={18} /></button>
+          </div>
+        </header>
 
-      <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <StatCard title="Total Students" value={stats.students} icon={<Users size={22} />} color="bg-blue-500" />
-          <StatCard title="Total Classes" value={stats.classes} icon={<BookOpen size={22} />} color="bg-green-500" />
-          <StatCard title="Teachers" value={stats.teachers} icon={<UserCog size={22} />} color="bg-purple-500" />
-          <StatCard title="Pending Approval" value={stats.pending} icon={<Clock size={22} />} color="bg-orange-500" />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 mb-6">
-          <button onClick={() => navigate(createPageUrl('ManageClasses'))} className="flex items-center justify-center sm:justify-start gap-2 bg-blue-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-            <BookOpen size={16} /> <span>Manage Classes</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('ManageStudents'))} className="flex items-center justify-center sm:justify-start gap-2 bg-green-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-green-700">
-            <Users size={16} /> <span>Manage Students</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('ReviewLeave'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <CheckCircle size={16} /> <span>Review Leave</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('UnapprovedAbsences'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <AlertTriangle size={16} /> <span>Unapproved Absences</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('AttendanceApproval'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <ClipboardList size={16} /> <span>Review Attendance</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('Reports'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <BarChart2 size={16} /> <span>View Reports</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('ManageExams'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <ClipboardList size={16} /> <span>Manage Exams</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('ClassComparison'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <BarChart2 size={16} /> <span>Class Comparison</span>
-          </button>
-          <button onClick={() => navigate(createPageUrl('SubstituteLog'))} className="flex items-center justify-center sm:justify-start gap-2 border border-slate-300 text-slate-700 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
-            <UserCog size={16} /> <span>Substitute Log</span>
-          </button>
-        </div>
+        <div className="max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
+          {/* Stat Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <StatCard title="Total Students" value={stats.students} icon={<Users size={22} />} color="bg-blue-500" />
+            <StatCard title="Total Classes" value={stats.classes} icon={<BookOpen size={22} />} color="bg-green-500" />
+            <StatCard title="Teachers" value={stats.teachers} icon={<UserCog size={22} />} color="bg-purple-500" />
+            <StatCard title="Pending Approval" value={stats.pending} icon={<Clock size={22} />} color="bg-orange-500" />
+          </div>
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-slate-200 mb-6 overflow-x-auto scrollbar-hide">
@@ -349,6 +351,7 @@ export default function PrincipalDashboard() {
           </form>
         </Modal>
       )}
+      </div>
     </div>
   );
 }

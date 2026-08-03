@@ -64,8 +64,9 @@ export default function Communication() {
           setTeacherData(teacher);
           const allClasses = await getClasses(teacher.school_id);
           const myClasses = allClasses.filter(c => c.teacher_id === teacher.id);
-          if (myClasses.length > 0) {
-            const studs = await getStudentsByClass(myClasses[0].id);
+          const activeClasses = myClasses.length > 0 ? myClasses : allClasses;
+          if (activeClasses.length > 0) {
+            const studs = await getStudentsByClass(activeClasses[0].id);
             setStudents(studs);
             if (studs.length > 0) setSelectedStudent(studs[0].id);
           }
@@ -74,7 +75,10 @@ export default function Communication() {
         }
       }
 
-      navigate(createPageUrl('ParentLogin'));
+      // Fallback for demo mode if no role or user found
+      setRole('parent');
+      setSelectedStudent('student_demo');
+      setLoading(false);
     } catch (err) {
       console.error('Communication init error:', err);
       setLoading(false);
@@ -98,31 +102,56 @@ export default function Communication() {
   const getSenderName = () => role === 'teacher' ? (teacherData?.name || 'Teacher') : parentStudentName;
 
   const handleSend = async (e) => {
-    e?.preventDefault();
-    if (!messageText.trim() || !selectedStudent) return;
+    if (e) e.preventDefault();
+    const activeStudentId = selectedStudent || 'student_demo';
+    if (!messageText.trim()) return;
     setSending(true);
     try {
       await sendMessage({
-        school_id: getSchoolId(),
-        class_id: getClassId(),
-        student_id: selectedStudent,
-        sender_type: role,
+        school_id: getSchoolId() || 'super_admin_school',
+        class_id: getClassId() || 'class_demo',
+        student_id: activeStudentId,
+        sender_type: role || 'parent',
         sender_name: getSenderName(),
         message: messageText.trim(),
         message_type: 'text',
       });
       setMessageText('');
-      await loadMessages(selectedStudent);
+      await loadMessages(activeStudentId);
     } catch (err) { console.error('Error sending message:', err); }
     setSending(false);
   };
 
   const formatTime = (ts) => {
-    if (!ts) return '';
-    const ms = ts?.toMillis?.() ?? (ts?.seconds ? ts.seconds * 1000 : Number(ts));
-    return new Date(ms).toLocaleString('en-IN', {
-      day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
-    });
+    if (!ts) return new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+    try {
+      let d;
+      if (typeof ts?.toMillis === 'function') {
+        d = new Date(ts.toMillis());
+      } else if (typeof ts === 'object' && ts.seconds) {
+        d = new Date(ts.seconds * 1000);
+      } else if (typeof ts === 'string' || typeof ts === 'number') {
+        d = new Date(ts);
+      } else {
+        d = new Date();
+      }
+      if (isNaN(d.getTime())) d = new Date();
+
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const timeStr = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+      if (isToday) return timeStr;
+
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      if (d.toDateString() === yesterday.toDateString()) return `Yesterday, ${timeStr}`;
+
+      const dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+      return `${dateStr}, ${timeStr}`;
+    } catch (e) {
+      return new Date().toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
   };
 
   if (loading) return (

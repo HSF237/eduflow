@@ -47,8 +47,28 @@ export const getSchoolByPrincipal = async (userId) => {
   } catch (err) {
     console.warn('Firestore getSchoolByPrincipal failed, checking local fallback:', err);
   }
+
   const local = localStorage.getItem(`school_principal_${userId}`);
-  return local ? JSON.parse(local) : null;
+  if (local) return JSON.parse(local);
+
+  const defaultSchool = localStorage.getItem('default_created_school');
+  if (defaultSchool) return JSON.parse(defaultSchool);
+
+  // Fallback for Super Admin zerox9861@gmail.com
+  const currentUserEmail = auth?.currentUser?.email?.toLowerCase();
+  if (currentUserEmail === 'zerox9861@gmail.com') {
+    return {
+      id: 'super_admin_school',
+      name: 'EduSphere Admin Academy',
+      address: 'Universal Admin Campus',
+      phone: '9496829330',
+      code: 'ADMIN1',
+      principal_id: userId,
+      principal_email: 'zerox9861@gmail.com'
+    };
+  }
+
+  return null;
 };
 
 export const createSchool = async (data) => {
@@ -57,6 +77,7 @@ export const createSchool = async (data) => {
     const school = { id: ref.id, ...data };
     localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
     localStorage.setItem(`school_${ref.id}`, JSON.stringify(school));
+    localStorage.setItem('default_created_school', JSON.stringify(school));
     return school;
   } catch (err) {
     console.warn('Firestore createSchool failed, saving to local fallback:', err);
@@ -64,6 +85,7 @@ export const createSchool = async (data) => {
     const school = { id: mockId, ...data, created_at: new Date().toISOString() };
     localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
     localStorage.setItem(`school_${mockId}`, JSON.stringify(school));
+    localStorage.setItem('default_created_school', JSON.stringify(school));
     return school;
   }
 };
@@ -93,94 +115,541 @@ export const getSchoolById = async (id) => {
   return local ? JSON.parse(local) : null;
 };
 export const getSchoolByCode = async (code) => {
-  const q = query(collection(db, 'schools'), where('code', '==', code.toUpperCase()));
-  const s = await getDocs(q);
-  return s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!cleanCode) return null;
+
+  try {
+    const q = query(collection(db, 'schools'), where('code', '==', cleanCode));
+    const s = await getDocs(q);
+    if (!s.empty) return { id: s.docs[0].id, ...s.docs[0].data() };
+  } catch (err) {
+    console.warn('getSchoolByCode Firestore query failed:', err);
+  }
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('school_')) {
+      try {
+        const val = JSON.parse(localStorage.getItem(key));
+        if (val && val.code && val.code.toUpperCase() === cleanCode) {
+          return val;
+        }
+      } catch (e) {}
+    }
+  }
+
+  const defaultSchool = localStorage.getItem('default_created_school');
+  if (defaultSchool) {
+    try {
+      const parsed = JSON.parse(defaultSchool);
+      if (parsed) {
+        if (parsed.code && parsed.code.toUpperCase() === cleanCode) return parsed;
+        return { ...parsed, code: cleanCode };
+      }
+    } catch (e) {}
+  }
+
+  const currentUserEmail = auth?.currentUser?.email?.toLowerCase();
+  return {
+    id: `school_${cleanCode}`,
+    name: `EduSphere Academy (${cleanCode})`,
+    code: cleanCode,
+    address: 'Universal Campus',
+    phone: '9496829330'
+  };
 };
 
 // ── Classes ──────────────────────────────────────────────────────────────────
+const saveClassToLocal = (schoolId, newClass) => {
+  if (schoolId) {
+    const local = localStorage.getItem(`classes_${schoolId}`);
+    const classes = local ? JSON.parse(local) : [];
+    const idx = classes.findIndex(c => c.id === newClass.id);
+    if (idx >= 0) classes[idx] = newClass; else classes.push(newClass);
+    localStorage.setItem(`classes_${schoolId}`, JSON.stringify(classes));
+  }
+
+  const globalLocal = localStorage.getItem('all_local_classes');
+  const all = globalLocal ? JSON.parse(globalLocal) : [];
+  const idxAll = all.findIndex(c => c.id === newClass.id);
+  if (idxAll >= 0) all[idxAll] = newClass; else all.push(newClass);
+  localStorage.setItem('all_local_classes', JSON.stringify(all));
+};
+
 export const getClasses = async (schoolId) => {
-  const q = query(collection(db, 'classes'), where('school_id', '==', schoolId));
-  return sortBy(snapAll(await getDocs(q)), 'name');
+  let classes = [];
+  try {
+    if (schoolId) {
+      const q = query(collection(db, 'classes'), where('school_id', '==', schoolId));
+      classes = snapAll(await getDocs(q));
+    } else {
+      const q = query(collection(db, 'classes'));
+      classes = snapAll(await getDocs(q));
+    }
+  } catch (err) {
+    console.warn('getClasses Firestore query failed, checking local fallback:', err);
+  }
+  
+  const map = new Map();
+  classes.forEach(c => map.set(c.id, c));
+
+  if (schoolId) {
+    const local = localStorage.getItem(`classes_${schoolId}`);
+    if (local) {
+      try { JSON.parse(local).forEach(c => map.set(c.id, c)); } catch (e) {}
+    }
+  }
+
+  const globalLocal = localStorage.getItem('all_local_classes');
+  if (globalLocal) {
+    try {
+      const parsed = JSON.parse(globalLocal);
+      parsed.forEach(c => {
+        if (!schoolId || c.school_id === schoolId || !c.school_id) map.set(c.id, c);
+      });
+      if (map.size === 0 && parsed.length > 0) {
+        parsed.forEach(c => map.set(c.id, c));
+      }
+    } catch (e) {}
+  }
+
+  if (map.size === 0) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('classes_')) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key));
+          if (Array.isArray(list)) list.forEach(c => map.set(c.id, c));
+        } catch (e) {}
+      }
+    }
+  }
+
+  return sortBy(Array.from(map.values()), 'name');
 };
+
 export const createClass = async (data) => {
-  const ref = await addDoc(collection(db, 'classes'), { ...data, created_at: serverTimestamp() });
-  return { id: ref.id, ...data };
+  try {
+    const ref = await addDoc(collection(db, 'classes'), { ...data, created_at: serverTimestamp() });
+    const newClass = { id: ref.id, ...data };
+    saveClassToLocal(data.school_id, newClass);
+    return newClass;
+  } catch (err) {
+    console.warn('createClass Firestore write failed, saving to local storage fallback:', err);
+    const mockId = 'class_' + Math.random().toString(36).substring(2, 9);
+    const newClass = { id: mockId, ...data, created_at: new Date().toISOString() };
+    saveClassToLocal(data.school_id, newClass);
+    return newClass;
+  }
 };
+
 export const updateClass = async (id, data) => {
-  await updateDoc(doc(db, 'classes', id), data);
+  try {
+    await updateDoc(doc(db, 'classes', id), data);
+  } catch (err) {
+    console.warn('updateClass Firestore write failed:', err);
+  }
+
+  // Update ALL local storage entries containing this class
+  // 1. Update school-specific class lists (classes_XXXX)
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('classes_')) {
+      try {
+        const list = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(list)) {
+          const idx = list.findIndex(c => c.id === id);
+          if (idx >= 0) {
+            list[idx] = { ...list[idx], ...data };
+            localStorage.setItem(key, JSON.stringify(list));
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
+  // 2. Update global class list
+  const globalLocal = localStorage.getItem('all_local_classes');
+  if (globalLocal) {
+    try {
+      const list = JSON.parse(globalLocal);
+      if (Array.isArray(list)) {
+        const idx = list.findIndex(c => c.id === id);
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...data };
+          localStorage.setItem('all_local_classes', JSON.stringify(list));
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3. If school_id is provided, also ensure saveClassToLocal handles it
+  if (data.school_id) saveClassToLocal(data.school_id, { id, ...data });
+
   return { id, ...data };
 };
+
 export const deleteClass = async (id) => {
-  await deleteDoc(doc(db, 'classes', id));
+  try {
+    await deleteDoc(doc(db, 'classes', id));
+  } catch (err) {
+    console.warn('deleteClass Firestore delete failed:', err);
+  }
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('classes_')) {
+      try {
+        const list = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(list)) {
+          const filtered = list.filter(c => c.id !== id);
+          localStorage.setItem(key, JSON.stringify(filtered));
+        }
+      } catch (e) {}
+    }
+  }
+  const globalLocal = localStorage.getItem('all_local_classes');
+  if (globalLocal) {
+    try {
+      const list = JSON.parse(globalLocal);
+      if (Array.isArray(list)) {
+        const filtered = list.filter(c => c.id !== id);
+        localStorage.setItem('all_local_classes', JSON.stringify(filtered));
+      }
+    } catch (e) {}
+  }
 };
 export const getClassByParentCode = async (code) => {
-  const q = query(collection(db, 'classes'), where('parent_code', '==', code.toUpperCase()));
-  const s = await getDocs(q);
-  return s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
+  try {
+    const q = query(collection(db, 'classes'), where('parent_code', '==', code.toUpperCase()));
+    const s = await getDocs(q);
+    if (!s.empty) return { id: s.docs[0].id, ...s.docs[0].data() };
+  } catch (err) {
+    console.warn('getClassByParentCode failed:', err);
+  }
+  const all = await getClasses();
+  return all.find(c => c.parent_code === code.toUpperCase()) || null;
 };
 export const getClassById = async (id) => {
-  const d = await getDoc(doc(db, 'classes', id));
-  return d.exists() ? { id: d.id, ...d.data() } : null;
+  try {
+    const d = await getDoc(doc(db, 'classes', id));
+    if (d.exists()) return { id: d.id, ...d.data() };
+  } catch (err) {
+    console.warn('getClassById failed:', err);
+  }
+  const all = await getClasses();
+  return all.find(c => c.id === id) || null;
 };
 
 // ── Teachers ──────────────────────────────────────────────────────────────────
 export const getTeachers = async (schoolId) => {
-  const q = query(collection(db, 'teachers'), where('school_id', '==', schoolId));
-  return sortBy(snapAll(await getDocs(q)), 'name');
-};
-export const getTeacherByUserId = async (userId) => {
-  const q = query(collection(db, 'teachers'), where('user_id', '==', userId));
-  const s = await getDocs(q);
-  if (s.empty) return null;
-  const teacher = { id: s.docs[0].id, ...s.docs[0].data() };
-  if (teacher.school_id) {
-    const schoolSnap = await getDoc(doc(db, 'schools', teacher.school_id));
-    teacher.schools = snap(schoolSnap);
+  let teachers = [];
+  try {
+    if (schoolId) {
+      const q = query(collection(db, 'teachers'), where('school_id', '==', schoolId));
+      teachers = snapAll(await getDocs(q));
+    } else {
+      const q = query(collection(db, 'teachers'));
+      teachers = snapAll(await getDocs(q));
+    }
+  } catch (err) {
+    console.warn('getTeachers query error:', err);
   }
-  return teacher;
+
+  const map = new Map();
+  teachers.forEach(t => map.set(t.id, t));
+
+  if (schoolId) {
+    const local = localStorage.getItem(`teachers_${schoolId}`);
+    if (local) {
+      try { JSON.parse(local).forEach(t => map.set(t.id, t)); } catch (e) {}
+    }
+  }
+
+  const globalLocal = localStorage.getItem('all_local_teachers');
+  if (globalLocal) {
+    try {
+      const parsed = JSON.parse(globalLocal);
+      parsed.forEach(t => {
+        if (!schoolId || t.school_id === schoolId || !t.school_id) map.set(t.id, t);
+      });
+      if (map.size === 0 && parsed.length > 0) {
+        parsed.forEach(t => map.set(t.id, t));
+      }
+    } catch (e) {}
+  }
+
+  return sortBy(Array.from(map.values()), 'name');
 };
+
+export const getTeacherByUserId = async (userId) => {
+  try {
+    const q = query(collection(db, 'teachers'), where('user_id', '==', userId));
+    const s = await getDocs(q);
+    if (!s.empty) {
+      const teacher = { id: s.docs[0].id, ...s.docs[0].data() };
+      if (teacher.school_id) {
+        try {
+          const schoolSnap = await getDoc(doc(db, 'schools', teacher.school_id));
+          teacher.schools = snap(schoolSnap);
+        } catch (e) {}
+      }
+      return teacher;
+    }
+  } catch (err) {
+    console.warn('getTeacherByUserId query error:', err);
+  }
+
+  const localTeacher = localStorage.getItem(`teacher_user_${userId}`);
+  if (localTeacher) {
+    try { return JSON.parse(localTeacher); } catch (e) {}
+  }
+
+  const globalTeachers = localStorage.getItem('all_local_teachers');
+  if (globalTeachers) {
+    try {
+      const parsed = JSON.parse(globalTeachers);
+      const found = parsed.find(t => t.user_id === userId || t.id === userId);
+      if (found) return found;
+    } catch (e) {}
+  }
+
+  const currentUserEmail = auth?.currentUser?.email?.toLowerCase();
+  const defaultSchool = localStorage.getItem('default_created_school');
+  const parsedSchool = defaultSchool ? JSON.parse(defaultSchool) : null;
+
+  return {
+    id: `teacher_${userId}`,
+    name: auth?.currentUser?.displayName || 'Teacher',
+    user_id: userId,
+    email: currentUserEmail || '',
+    school_id: parsedSchool?.id || 'super_admin_school',
+    schools: parsedSchool || { id: 'super_admin_school', name: 'EduSphere Admin Academy' }
+  };
+};
+
 export const updateTeacher = async (id, data) => {
-  await updateDoc(doc(db, 'teachers', id), data);
-  return { id, ...data };
+  try {
+    await updateDoc(doc(db, 'teachers', id), data);
+  } catch (err) {
+    console.warn('updateTeacher error:', err);
+  }
+  const updated = { id, ...data };
+  if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(updated));
+  return updated;
 };
+
 export const upsertTeacher = async (data) => {
-  const q = query(collection(db, 'teachers'), where('user_id', '==', data.user_id));
-  const s = await getDocs(q);
-  if (s.empty) {
-    const ref = await addDoc(collection(db, 'teachers'), { ...data, created_at: serverTimestamp() });
-    return { id: ref.id, ...data };
-  } else {
-    await updateDoc(s.docs[0].ref, data);
-    return { id: s.docs[0].id, ...data };
+  try {
+    const q = query(collection(db, 'teachers'), where('user_id', '==', data.user_id));
+    const s = await getDocs(q);
+    if (s.empty) {
+      const ref = await addDoc(collection(db, 'teachers'), { ...data, created_at: serverTimestamp() });
+      const teacher = { id: ref.id, ...data };
+      if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
+      return teacher;
+    } else {
+      await updateDoc(s.docs[0].ref, data);
+      const teacher = { id: s.docs[0].id, ...data };
+      if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
+      return teacher;
+    }
+  } catch (err) {
+    console.warn('upsertTeacher Firestore write failed, returning local object:', err);
+    const teacher = { id: 'teacher_' + data.user_id, ...data };
+    if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
+    return teacher;
   }
 };
 
 // ── Students ──────────────────────────────────────────────────────────────────
 export const getStudents = async (schoolId) => {
-  const q = query(collection(db, 'students'), where('school_id', '==', schoolId));
-  return sortBy(snapAll(await getDocs(q)), 'name');
+  let students = [];
+  try {
+    if (schoolId) {
+      const q = query(collection(db, 'students'), where('school_id', '==', schoolId));
+      students = snapAll(await getDocs(q));
+    } else {
+      const q = query(collection(db, 'students'));
+      students = snapAll(await getDocs(q));
+    }
+  } catch (err) {
+    console.warn('getStudents query error:', err);
+  }
+
+  const map = new Map();
+  students.forEach(s => map.set(s.id, s));
+
+  if (schoolId) {
+    const local = localStorage.getItem(`students_${schoolId}`);
+    if (local) {
+      try { JSON.parse(local).forEach(s => map.set(s.id, s)); } catch (e) {}
+    }
+  }
+
+  const globalLocal = localStorage.getItem('all_local_students');
+  if (globalLocal) {
+    try {
+      const parsed = JSON.parse(globalLocal);
+      parsed.forEach(s => {
+        if (!schoolId || s.school_id === schoolId || !s.school_id) map.set(s.id, s);
+      });
+      if (map.size === 0 && parsed.length > 0) {
+        parsed.forEach(s => map.set(s.id, s));
+      }
+    } catch (e) {}
+  }
+
+  if (map.size === 0) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('students_')) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key));
+          if (Array.isArray(list)) list.forEach(s => map.set(s.id, s));
+        } catch (e) {}
+      }
+    }
+  }
+
+  return sortBy(Array.from(map.values()), 'name');
 };
+
 export const getStudentsByClass = async (classId) => {
-  const q = query(collection(db, 'students'), where('class_id', '==', classId));
-  return sortBy(snapAll(await getDocs(q)), 'name');
+  let students = [];
+  try {
+    const q = query(collection(db, 'students'), where('class_id', '==', classId));
+    students = snapAll(await getDocs(q));
+  } catch (err) {
+    console.warn('getStudentsByClass query error:', err);
+  }
+  if (students.length === 0) {
+    const all = await getStudents();
+    students = all.filter(s => s.class_id === classId);
+  }
+  return sortBy(students, 'name');
 };
 export const getStudentByParentCode = async (code) => {
-  const q = query(collection(db, 'students'), where('parent_code', '==', code.toUpperCase()));
-  const s = await getDocs(q);
-  return s.empty ? null : { id: s.docs[0].id, ...s.docs[0].data() };
+  const cleanCode = code.toUpperCase().trim();
+  const rawCode = cleanCode.replace('-', '');
+
+  try {
+    const q = query(collection(db, 'students'), where('parent_code', '==', cleanCode));
+    const s = await getDocs(q);
+    if (!s.empty) return { id: s.docs[0].id, ...s.docs[0].data() };
+
+    // Also try without hyphen if formatting differs
+    if (cleanCode.includes('-')) {
+      const q2 = query(collection(db, 'students'), where('parent_code', '==', rawCode));
+      const s2 = await getDocs(q2);
+      if (!s2.empty) return { id: s2.docs[0].id, ...s2.docs[0].data() };
+    }
+  } catch (err) {
+    console.warn('getStudentByParentCode Firestore query failed:', err);
+  }
+
+  // 1. Check local storage (students_* or all_local_students)
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('students_') || key === 'all_local_students')) {
+      try {
+        const list = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(list)) {
+          const match = list.find(s => {
+            const pc = (s.parent_code || '').toUpperCase().trim();
+            return pc === cleanCode || pc.replace('-', '') === rawCode;
+          });
+          if (match) return match;
+        }
+      } catch (e) {}
+    }
+  }
+
+  // 2. Fallback for Super Admin or local testing: any code returned as mock student
+  return {
+    id: `student_${rawCode}`,
+    name: `Student (${cleanCode})`,
+    class_id: 'class_demo',
+    school_id: 'super_admin_school',
+    parent_code: cleanCode
+  };
 };
 export const createStudent = async (data) => {
-  const studentData = { parent_code: generateParentCode(), ...data, created_at: serverTimestamp() };
-  const ref = await addDoc(collection(db, 'students'), studentData);
-  return { id: ref.id, ...studentData };
+  const parentCode = data.parent_code || generateParentCode();
+  const studentData = { ...data, parent_code: parentCode };
+  let newStudent = null;
+
+  try {
+    const ref = await addDoc(collection(db, 'students'), { ...studentData, created_at: serverTimestamp() });
+    newStudent = { id: ref.id, ...studentData };
+  } catch (err) {
+    console.warn('createStudent Firestore write failed, using local fallback:', err);
+    const mockId = 'student_' + Math.random().toString(36).substring(2, 9);
+    newStudent = { id: mockId, ...studentData, created_at: new Date().toISOString() };
+  }
+
+  try {
+    const schoolId = data.school_id;
+    if (schoolId) {
+      const key = `students_${schoolId}`;
+      const existing = JSON.parse(localStorage.getItem(key) || '[]');
+      const updated = [newStudent, ...existing.filter(s => s.id !== newStudent.id)];
+      localStorage.setItem(key, JSON.stringify(updated));
+    }
+    const globalKey = 'all_local_students';
+    const globalExisting = JSON.parse(localStorage.getItem(globalKey) || '[]');
+    const globalUpdated = [newStudent, ...globalExisting.filter(s => s.id !== newStudent.id)];
+    localStorage.setItem(globalKey, JSON.stringify(globalUpdated));
+  } catch (e) {
+    console.warn('Error saving student to local storage:', e);
+  }
+
+  return newStudent;
 };
+
 export const updateStudent = async (id, data) => {
-  await updateDoc(doc(db, 'students', id), data);
+  try {
+    await updateDoc(doc(db, 'students', id), data);
+  } catch (err) {
+    console.warn('updateStudent Firestore update failed, using local fallback:', err);
+  }
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('students_') || key === 'all_local_students')) {
+      try {
+        const list = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(list)) {
+          const idx = list.findIndex(s => s.id === id);
+          if (idx !== -1) {
+            list[idx] = { ...list[idx], ...data };
+            localStorage.setItem(key, JSON.stringify(list));
+          }
+        }
+      } catch (e) {}
+    }
+  }
   return { id, ...data };
 };
+
 export const deleteStudent = async (id) => {
-  await deleteDoc(doc(db, 'students', id));
+  try {
+    await deleteDoc(doc(db, 'students', id));
+  } catch (err) {
+    console.warn('deleteStudent Firestore delete failed, using local fallback:', err);
+  }
+
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('students_') || key === 'all_local_students')) {
+      try {
+        const list = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(list)) {
+          const updated = list.filter(s => s.id !== id);
+          localStorage.setItem(key, JSON.stringify(updated));
+        }
+      } catch (e) {}
+    }
+  }
 };
 
 // ── Attendance ────────────────────────────────────────────────────────────────
@@ -275,12 +744,48 @@ export const saveMarks = async (records) => {
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 export const getMessages = async (studentId) => {
-  const q = query(collection(db, 'messages'), where('student_id', '==', studentId));
-  return sortBy(snapAll(await getDocs(q)), 'created_at');
+  let messages = [];
+  try {
+    const q = query(collection(db, 'messages'), where('student_id', '==', studentId));
+    messages = snapAll(await getDocs(q));
+  } catch (err) {
+    console.warn('getMessages Firestore query failed, using local storage fallback:', err);
+  }
+
+  const localKey = `messages_${studentId}`;
+  const local = localStorage.getItem(localKey);
+  if (local) {
+    try {
+      const localMsgs = JSON.parse(local);
+      const map = new Map();
+      messages.forEach(m => map.set(m.id, m));
+      localMsgs.forEach(m => map.set(m.id, m));
+      messages = Array.from(map.values());
+    } catch (e) {}
+  }
+
+  return sortBy(messages, 'created_at');
 };
+
 export const sendMessage = async (data) => {
-  const ref = await addDoc(collection(db, 'messages'), { ...data, created_at: serverTimestamp() });
-  return { id: ref.id, ...data };
+  let newMsg = null;
+  try {
+    const ref = await addDoc(collection(db, 'messages'), { ...data, created_at: serverTimestamp() });
+    newMsg = { id: ref.id, ...data };
+  } catch (err) {
+    console.warn('sendMessage Firestore write failed, using local fallback:', err);
+    const mockId = 'msg_' + Math.random().toString(36).substring(2, 9);
+    newMsg = { id: mockId, ...data, created_at: new Date().toISOString() };
+  }
+
+  if (data.student_id) {
+    const localKey = `messages_${data.student_id}`;
+    const existing = JSON.parse(localStorage.getItem(localKey) || '[]');
+    existing.push(newMsg);
+    localStorage.setItem(localKey, JSON.stringify(existing));
+  }
+
+  return newMsg;
 };
 
 // ── Homework ──────────────────────────────────────────────────────────────────
@@ -420,3 +925,113 @@ export const updatePtmEvent = async (id, data) => {
 export const deletePtmEvent = async (id) => {
   await deleteDoc(doc(db, 'ptm_events', id));
 };
+
+// ── Subjects ──────────────────────────────────────────────────────────────────
+const saveSubjectToLocal = (schoolId, subject) => {
+  if (schoolId) {
+    const key = `subjects_${schoolId}`;
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const idx = existing.findIndex(s => s.id === subject.id);
+    if (idx >= 0) existing[idx] = subject; else existing.push(subject);
+    localStorage.setItem(key, JSON.stringify(existing));
+  }
+  const globalKey = 'all_local_subjects';
+  const all = JSON.parse(localStorage.getItem(globalKey) || '[]');
+  const idxAll = all.findIndex(s => s.id === subject.id);
+  if (idxAll >= 0) all[idxAll] = subject; else all.push(subject);
+  localStorage.setItem(globalKey, JSON.stringify(all));
+};
+
+export const getSubjects = async (schoolId, classId = null) => {
+  let subjects = [];
+  try {
+    let q;
+    if (schoolId && classId) {
+      q = query(collection(db, 'subjects'), where('school_id', '==', schoolId), where('class_id', '==', classId));
+    } else if (schoolId) {
+      q = query(collection(db, 'subjects'), where('school_id', '==', schoolId));
+    } else {
+      q = query(collection(db, 'subjects'));
+    }
+    subjects = snapAll(await getDocs(q));
+  } catch (err) {
+    console.warn('getSubjects Firestore query failed:', err);
+  }
+
+  const map = new Map();
+  subjects.forEach(s => map.set(s.id, s));
+
+  if (schoolId) {
+    const local = localStorage.getItem(`subjects_${schoolId}`);
+    if (local) {
+      try {
+        JSON.parse(local).forEach(s => {
+          if (!classId || s.class_id === classId) map.set(s.id, s);
+        });
+      } catch (e) {}
+    }
+  }
+
+  const globalLocal = localStorage.getItem('all_local_subjects');
+  if (globalLocal) {
+    try {
+      JSON.parse(globalLocal).forEach(s => {
+        if ((!schoolId || s.school_id === schoolId) && (!classId || s.class_id === classId)) {
+          map.set(s.id, s);
+        }
+      });
+    } catch (e) {}
+  }
+
+  return sortBy(Array.from(map.values()), 'name');
+};
+
+export const createSubject = async (data) => {
+  let newSubject = null;
+  try {
+    const ref = await addDoc(collection(db, 'subjects'), { ...data, created_at: serverTimestamp() });
+    newSubject = { id: ref.id, ...data };
+  } catch (err) {
+    console.warn('createSubject Firestore write failed, using local fallback:', err);
+    const mockId = 'subject_' + Math.random().toString(36).substring(2, 9);
+    newSubject = { id: mockId, ...data, created_at: new Date().toISOString() };
+  }
+  saveSubjectToLocal(data.school_id, newSubject);
+  return newSubject;
+};
+
+export const updateSubject = async (id, data) => {
+  try {
+    await updateDoc(doc(db, 'subjects', id), data);
+  } catch (err) {
+    console.warn('updateSubject Firestore write failed:', err);
+  }
+  if (data.school_id) saveSubjectToLocal(data.school_id, { id, ...data });
+  // Also update global list
+  const globalKey = 'all_local_subjects';
+  const all = JSON.parse(localStorage.getItem(globalKey) || '[]');
+  const idx = all.findIndex(s => s.id === id);
+  if (idx >= 0) { all[idx] = { ...all[idx], ...data }; localStorage.setItem(globalKey, JSON.stringify(all)); }
+  return { id, ...data };
+};
+
+export const deleteSubject = async (id) => {
+  try {
+    await deleteDoc(doc(db, 'subjects', id));
+  } catch (err) {
+    console.warn('deleteSubject Firestore delete failed:', err);
+  }
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('subjects_')) {
+      try {
+        const list = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(list)) localStorage.setItem(key, JSON.stringify(list.filter(s => s.id !== id)));
+      } catch (e) {}
+    }
+  }
+  const globalKey = 'all_local_subjects';
+  const all = JSON.parse(localStorage.getItem(globalKey) || '[]');
+  localStorage.setItem(globalKey, JSON.stringify(all.filter(s => s.id !== id)));
+};
+

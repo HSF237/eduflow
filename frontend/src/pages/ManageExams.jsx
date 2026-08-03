@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import {
   getSchoolByPrincipal, getClasses, getExamsBySchool,
-  createExam, updateExam, deleteExam
+  getSubjects, createExam, updateExam, deleteExam
 } from '@/lib/db';
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2, BookMarked } from 'lucide-react';
 
@@ -25,6 +25,9 @@ export default function ManageExams() {
   const [editingExam, setEditingExam] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [filterClass, setFilterClass] = useState('all');
+  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedSubjects, setSelectedSubjects] = useState([]);
 
   useEffect(() => {
     if (!isLoadingAuth) loadData(authUser);
@@ -45,13 +48,40 @@ export default function ManageExams() {
     setLoading(false);
   };
 
-  const openAdd = () => { setEditingExam(null); setForm(emptyForm); setDialogOpen(true); };
+  const fetchSubjectsForClass = async (classId) => {
+    if (!classId || !school) { setAvailableSubjects([]); return; }
+    try {
+      const subjs = await getSubjects(school.id, classId);
+      setAvailableSubjects(subjs);
+    } catch (err) {
+      setAvailableSubjects([]);
+    }
+  };
+
+  const handleClassChange = (classId) => {
+    setForm(prev => ({ ...prev, class_id: classId, subject: '' }));
+    setSelectedSubjects([]);
+    fetchSubjectsForClass(classId);
+  };
+
+  const openAdd = () => {
+    setEditingExam(null);
+    setForm(emptyForm);
+    setBulkMode(false);
+    setSelectedSubjects([]);
+    setAvailableSubjects([]);
+    setDialogOpen(true);
+  };
+
   const openEdit = (exam) => {
     setEditingExam(exam);
     setForm({ name: exam.name, type: exam.type, class_id: exam.class_id, subject: exam.subject, max_marks: exam.max_marks, exam_date: exam.exam_date || '' });
+    setBulkMode(false);
+    fetchSubjectsForClass(exam.class_id);
     setDialogOpen(true);
   };
-  const closeDialog = () => { setDialogOpen(false); setEditingExam(null); setForm(emptyForm); };
+
+  const closeDialog = () => { setDialogOpen(false); setEditingExam(null); setForm(emptyForm); setBulkMode(false); setSelectedSubjects([]); };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -60,6 +90,16 @@ export default function ManageExams() {
     try {
       if (editingExam) {
         await updateExam(editingExam.id, { ...form, school_id: school.id });
+      } else if (bulkMode) {
+        const subsToCreate = selectedSubjects.length > 0 ? selectedSubjects : availableSubjects.map(s => s.name);
+        if (subsToCreate.length === 0) {
+          alert('No subjects available or selected to create exams for.');
+          setSubmitting(false);
+          return;
+        }
+        for (const subName of subsToCreate) {
+          await createExam({ ...form, subject: subName, school_id: school.id });
+        }
       } else {
         await createExam({ ...form, school_id: school.id });
       }
@@ -195,6 +235,12 @@ export default function ManageExams() {
               {editingExam ? 'Edit Exam' : 'Add New Exam'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {!editingExam && (
+                <label className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl cursor-pointer">
+                  <input type="checkbox" checked={bulkMode} onChange={e => setBulkMode(e.target.checked)} className="w-4 h-4 accent-blue-600 rounded" />
+                  <span className="text-sm font-semibold text-blue-900">Create exam for all/selected subjects of this class</span>
+                </label>
+              )}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Exam Name</label>
                 <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required
@@ -211,31 +257,70 @@ export default function ManageExams() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Class</label>
-                  <select value={form.class_id} onChange={e => setForm({ ...form, class_id: e.target.value })} required
+                  <select value={form.class_id} onChange={e => handleClassChange(e.target.value)} required
                     className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
                     <option value="">Select class</option>
                     {classes.map(c => <option key={c.id} value={c.id}>{c.name}{c.section ? ` - ${c.section}` : ''}</option>)}
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
-                  <input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} required
-                    placeholder="e.g., Mathematics"
-                    list="subjects-list"
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                  <datalist id="subjects-list">
-                    {SUBJECTS.map(s => <option key={s} value={s} />)}
-                  </datalist>
+
+              {!bulkMode ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
+                    {availableSubjects.length > 0 ? (
+                      <select value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} required
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="">Select subject</option>
+                        {availableSubjects.map(s => <option key={s.id} value={s.name}>{s.name} ({s.code || 'Sub'})</option>)}
+                      </select>
+                    ) : (
+                      <input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} required
+                        placeholder="e.g., Mathematics"
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Max Marks</label>
+                    <input type="number" value={form.max_marks} min={1} required
+                      onChange={e => setForm({ ...form, max_marks: parseInt(e.target.value) || 0 })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Max Marks</label>
-                  <input type="number" value={form.max_marks} min={1} required
-                    onChange={e => setForm({ ...form, max_marks: parseInt(e.target.value) || 0 })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Max Marks</label>
+                    <input type="number" value={form.max_marks} min={1} required
+                      onChange={e => setForm({ ...form, max_marks: parseInt(e.target.value) || 0 })}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  </div>
+                  {availableSubjects.length > 0 ? (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Select Subjects (leave empty for ALL):</label>
+                      <div className="grid grid-cols-2 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-xl max-h-36 overflow-y-auto">
+                        {availableSubjects.map(s => (
+                          <label key={s.id} className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" checked={selectedSubjects.includes(s.name)}
+                              onChange={e => {
+                                if (e.target.checked) setSelectedSubjects(prev => [...prev, s.name]);
+                                else setSelectedSubjects(prev => prev.filter(name => name !== s.name));
+                              }}
+                              className="accent-blue-600" />
+                            {s.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                      No subjects configured for this class yet. Please add subjects from the Subjects tab first or switch off multi-subject mode.
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Exam Date</label>
                 <input type="date" value={form.exam_date} onChange={e => setForm({ ...form, exam_date: e.target.value })}

@@ -1,12 +1,10 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
 
-import Onboarding from './Onboarding';
 import PrincipalDashboard from './PrincipalDashboard';
 import TeacherDashboard from './TeacherDashboard';
 import ParentDashboard from './ParentDashboard';
-import { User, Shield, GraduationCap, Users } from 'lucide-react';
+import { Shield, GraduationCap, Users } from 'lucide-react';
 
 export default function DashboardRouter({ session }) {
   const [profile, setProfile] = useState({

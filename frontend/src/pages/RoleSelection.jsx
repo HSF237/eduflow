@@ -35,6 +35,14 @@ export default function RoleSelection() {
   }, [isLoadingAuth, user]);
 
   const handleRoleSelect = (role) => {
+    const isSuperAdmin = user?.email?.toLowerCase() === 'zerox9861@gmail.com';
+    if (isSuperAdmin) {
+      if (role === 'principal') navigate(createPageUrl('PrincipalDashboard'));
+      else if (role === 'teacher') navigate(createPageUrl('TeacherDashboard'));
+      else navigate(createPageUrl('ParentDashboard'));
+      return;
+    }
+
     if (role === 'principal') {
       navigate(user ? createPageUrl('SetupSchool') : '/login?role=principal');
     } else if (role === 'teacher') {

@@ -8,10 +8,11 @@ import {
   getPtmByClass,
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
+import DashboardSidebar from '@/components/DashboardSidebar';
 import {
   GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
   TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle,
-  BookCopy, CalendarDays, Megaphone, BookOpen, UserPlus, X, KeyRound, Plus, CalendarCheck,
+  BookCopy, CalendarDays, Megaphone, BookOpen, UserPlus, X, KeyRound, Plus, CalendarCheck, Menu,
 } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, color }) {
@@ -72,6 +73,7 @@ export default function ParentDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [attendancePct, setAttendancePct] = useState(null);
   const [presentCount, setPresentCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
@@ -311,44 +313,62 @@ export default function ParentDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-purple-600 to-pink-500 px-4 py-3">
-        <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <GraduationCap className="w-6 h-6 text-white shrink-0" />
-            <div className="min-w-0">
-              <p className="text-white font-bold text-base leading-tight truncate">{studentName}</p>
-              <p className="text-purple-200 text-xs">Parent Dashboard</p>
-            </div>
-          </div>
-          <nav className="flex items-center gap-1 shrink-0">
-            <button onClick={() => navigate(createPageUrl('Communication'))}
-              className="relative p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Messages">
-              <MessageCircle className="w-5 h-5" />
-              {unreadMessages > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
-                </span>
-              )}
-            </button>
-            <button onClick={() => navigate(createPageUrl('ApplyLeave'))}
-              className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Apply Leave">
-              <Calendar className="w-5 h-5" />
-            </button>
-            <button onClick={() => { setShowAddChild(true); setAddCode(''); setAddError(''); }}
-              className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Add Child">
-              <UserPlus className="w-5 h-5" />
-            </button>
-            <button onClick={handleLogout}
-              className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Logout">
-              <LogOut className="w-5 h-5" />
-            </button>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      <DashboardSidebar
+        role="parent"
+        unreadMessages={unreadMessages}
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        studentName={studentName}
+        onLogout={handleLogout}
+        onAddChild={() => { setShowAddChild(true); setAddCode(''); setAddError(''); }}
+      />
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Header */}
+        <header className="bg-gradient-to-r from-purple-600 to-pink-500 px-4 py-3 sticky top-0 z-20">
+          <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-1.5 text-white hover:bg-white/20 rounded-lg transition-colors"
+                title="Open Navigation Menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <GraduationCap className="w-6 h-6 text-white shrink-0" />
+              <div className="min-w-0">
+                <p className="text-white font-bold text-base leading-tight truncate">{studentName}</p>
+                <p className="text-purple-200 text-xs">Parent Dashboard</p>
+              </div>
+            </div>
+            <nav className="flex items-center gap-1 shrink-0">
+              <button onClick={() => navigate(createPageUrl('Communication'))}
+                className="relative p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Messages">
+                <MessageCircle className="w-5 h-5" />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
+              </button>
+              <button onClick={() => navigate(createPageUrl('ApplyLeave'))}
+                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Apply Leave">
+                <Calendar className="w-5 h-5" />
+              </button>
+              <button onClick={() => { setShowAddChild(true); setAddCode(''); setAddError(''); }}
+                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Add Child">
+                <UserPlus className="w-5 h-5" />
+              </button>
+              <button onClick={handleLogout}
+                className="p-2 text-white hover:bg-white/20 rounded-lg transition-colors" title="Logout">
+                <LogOut className="w-5 h-5" />
+              </button>
+            </nav>
+          </div>
+        </header>
+
+        <main className="max-w-2xl w-full mx-auto px-4 py-6 space-y-5">
 
         {/* Child switcher */}
         {linkedStudents.length > 1 && (
@@ -732,6 +752,7 @@ export default function ParentDashboard() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

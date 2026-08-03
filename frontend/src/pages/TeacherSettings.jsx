@@ -3,7 +3,7 @@ import { auth } from '@/lib/firebase';
 import { updateProfile } from 'firebase/auth';
 import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getTeacherByUserId, getClasses, updateTeacher } from '@/lib/db';
 import { ArrowLeft, Loader2, Save, User, BookOpen } from 'lucide-react';
 

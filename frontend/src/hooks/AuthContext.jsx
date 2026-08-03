@@ -4,10 +4,14 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 const AuthContext = createContext();
 
+export const SUPER_ADMIN_EMAIL = 'zerox9861@gmail.com';
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  const isSuperAdmin = user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (firebaseUser) => {
@@ -31,6 +35,8 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user,
       isAuthenticated,
+      isSuperAdmin,
+      SUPER_ADMIN_EMAIL,
       isLoadingAuth,
       isLoadingPublicSettings: false,
       authError: null,
