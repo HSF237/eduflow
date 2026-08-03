@@ -177,42 +177,42 @@ const saveClassToLocal = (schoolId, newClass) => {
 };
 
 export const getClasses = async (schoolId) => {
-  let classes = [];
-  try {
-    if (schoolId) {
-      const q = query(collection(db, 'classes'), where('school_id', '==', schoolId));
-      classes = snapAll(await getDocs(q));
-    } else {
-      const q = query(collection(db, 'classes'));
-      classes = snapAll(await getDocs(q));
-    }
-  } catch (err) {
-    console.warn('getClasses Firestore query failed, checking local fallback:', err);
-  }
-  
   const map = new Map();
-  classes.forEach(c => map.set(c.id, c));
 
+  // 1. Try Firestore with school filter first
   if (schoolId) {
-    const local = localStorage.getItem(`classes_${schoolId}`);
-    if (local) {
-      try { JSON.parse(local).forEach(c => map.set(c.id, c)); } catch (e) {}
+    try {
+      const q = query(collection(db, 'classes'), where('school_id', '==', schoolId));
+      snapAll(await getDocs(q)).forEach(c => map.set(c.id, c));
+    } catch (err) {
+      console.warn('getClasses filtered Firestore query failed:', err);
     }
   }
 
-  const globalLocal = localStorage.getItem('all_local_classes');
-  if (globalLocal) {
+  // 2. If still nothing (wrong schoolId or rules block filtered query), fetch ALL from Firestore
+  if (map.size === 0) {
     try {
-      const parsed = JSON.parse(globalLocal);
-      parsed.forEach(c => {
-        if (!schoolId || c.school_id === schoolId || !c.school_id) map.set(c.id, c);
-      });
-      if (map.size === 0 && parsed.length > 0) {
-        parsed.forEach(c => map.set(c.id, c));
-      }
+      snapAll(await getDocs(collection(db, 'classes'))).forEach(c => map.set(c.id, c));
+    } catch (err) {
+      console.warn('getClasses unfiltered Firestore query also failed:', err);
+    }
+  }
+
+  // 3. Merge school-specific localStorage cache
+  if (schoolId) {
+    try {
+      const local = localStorage.getItem(`classes_${schoolId}`);
+      if (local) JSON.parse(local).forEach(c => map.set(c.id, c));
     } catch (e) {}
   }
 
+  // 4. Always merge all_local_classes (never filter by schoolId — cross-device safety)
+  try {
+    const globalLocal = localStorage.getItem('all_local_classes');
+    if (globalLocal) JSON.parse(globalLocal).forEach(c => map.set(c.id, c));
+  } catch (e) {}
+
+  // 5. Last resort: scan every classes_* key in localStorage
   if (map.size === 0) {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -227,6 +227,7 @@ export const getClasses = async (schoolId) => {
 
   return sortBy(Array.from(map.values()), 'name');
 };
+
 
 export const createClass = async (data) => {
   try {
