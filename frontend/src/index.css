@@ -42,3 +42,18 @@
     font-size: 16px !important; /* Prevents iOS browser auto-zoom on input focus */
   }
 }
+
+@layer utilities {
+  /* Expands touch hit area without changing visual element size */
+  .hit-target, button, [role="button"] {
+    position: relative;
+  }
+  .hit-target::after, button::after, [role="button"]::after {
+    content: '';
+    position: absolute;
+    top: -8px;
+    bottom: -8px;
+    left: -8px;
+    right: -8px;
+  }
+}
