@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
-import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, getAttendanceByClass, generateCode, createClass, createStudent } from '@/lib/db';
+import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, getAttendanceByClass, createClass, createStudent } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import DashboardSidebar from '@/components/DashboardSidebar';
 import {
@@ -86,7 +86,7 @@ export default function PrincipalDashboard() {
   const handleAddClass = async (e) => {
     e.preventDefault(); setSaving(true);
     try {
-      await createClass({ ...classForm, school_id: school.id, parent_code: generateCode() });
+      await createClass({ ...classForm, school_id: school.id });
       setShowAddClass(false); setClassForm({ name: '', section: '' }); load();
     } catch (err) { alert('Error creating class'); }
     setSaving(false);

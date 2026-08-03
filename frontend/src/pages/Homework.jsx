@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
 import {
   getTeacherByUserId, getClasses, getHomeworkByClass, addHomework, deleteHomework,
-  getFcmTokensForClass,
+  getFcmTokensForClass, getSubjects,
 } from '@/lib/db';
 import { sendPush } from '@/lib/fcm';
 import { ArrowLeft, Loader2, BookOpen, Plus, Trash2, X } from 'lucide-react';
@@ -26,6 +26,7 @@ export default function Homework() {
   const [form, setForm] = useState({ title: '', subject: 'Math', customSubject: '', description: '', due_date: '' });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [subjectList, setSubjectList] = useState(SUBJECTS);
   const [teacherData, setTeacherData] = useState(null);
 
   const today = new Date().toISOString().split('T')[0];
@@ -39,7 +40,13 @@ export default function Homework() {
     if (!teacher) { navigate(createPageUrl('JoinSchool')); return; }
     setTeacherData(teacher);
     const allClasses = await getClasses(teacher.school_id);
-    const myClasses = allClasses.filter(c => c.teacher_id === teacher.id);
+    const dbSubjects = await getSubjects(teacher.school_id).catch(() => []);
+    if (dbSubjects.length > 0) {
+      const names = dbSubjects.map(s => s.name);
+      setSubjectList([...new Set([...names, 'Other'])]);
+      setForm(f => ({ ...f, subject: names[0] }));
+    }
+    const myClasses = allClasses.filter(c => c.teacher_id === teacher.id || (teacher.assigned_classes || []).includes(c.id));
     setClasses(myClasses);
     if (myClasses.length > 0) setSelectedClassId(myClasses[0].id);
     setLoading(false);
@@ -177,7 +184,7 @@ export default function Homework() {
                 <label className="text-xs font-semibold text-slate-600 mb-1 block">Subject</label>
                 <select value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value, customSubject: '' }))}
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
-                  {SUBJECTS.map(s => <option key={s}>{s}</option>)}
+                  {subjectList.map(s => <option key={s}>{s}</option>)}
                 </select>
                 {form.subject === 'Other' && (
                   <input

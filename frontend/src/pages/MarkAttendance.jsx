@@ -53,8 +53,9 @@ export default function MarkAttendance() {
       navigate(createPageUrl('TeacherDashboard'));
       return;
     }
-    loadData();
-  }, [classId]);
+    if (authUser) loadData();
+    else navigate(createPageUrl('Login'));
+  }, [classId, authUser]);
 
   const loadData = async () => {
     setLoading(true);

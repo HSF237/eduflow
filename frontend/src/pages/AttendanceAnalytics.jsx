@@ -40,7 +40,7 @@ export default function AttendanceAnalytics() {
       if (!teacherData) { navigate(createPageUrl('JoinSchool')); return; }
       setTeacher(teacherData);
       const allClasses = await getClasses(teacherData.school_id);
-      const myClasses = allClasses.filter(c => c.teacher_id === teacherData.id);
+      const myClasses = allClasses.filter(c => c.teacher_id === teacherData.id || (teacherData.assigned_classes || []).includes(c.id));
       setClasses(myClasses);
       if (myClasses.length > 0) setSelectedClass(myClasses[0].id);
     } catch (err) { console.error(err); }

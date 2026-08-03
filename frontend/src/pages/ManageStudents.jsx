@@ -99,7 +99,7 @@ export default function ManageStudents() {
       if (editingStudent) {
         await updateStudent(editingStudent.id, sharedFields);
       } else {
-        await createStudent({ school_id: schoolId, ...sharedFields, engagement_score: 100, status: 'Active' });
+        await createStudent({ school_id: schoolId, ...sharedFields, engagement_score: 100, status: 'Active', parent_code: generateParentCode() });
       }
       await loadData(authUser);
       closeDialog();

@@ -166,7 +166,7 @@ export default function ViewMarks() {
       // Show only the selected student if one is stored
       if (selectedStudentId) {
         const found = all.find(s => s.id === selectedStudentId);
-        setStudents(found ? [found] : all);
+        setStudents(found ? [found] : []);
       } else {
         setStudents(all);
       }

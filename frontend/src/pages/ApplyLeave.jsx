@@ -57,6 +57,9 @@ export default function ApplyLeave() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setSuccess('');
+    if (!form.from_date || !form.to_date) {
+      setError('Please select both start and end dates'); return;
+    }
     if (new Date(form.to_date) < new Date(form.from_date)) {
       setError('End date cannot be before start date'); return;
     }

@@ -73,13 +73,14 @@ export default function TeacherManageExams() {
       const schoolId = teacherData.school_id;
       const allClasses = await getClasses(schoolId);
       const teacherClasses = allClasses.filter(c =>
-        (teacherData.assigned_classes || []).includes(c.id)
+        c.teacher_id === teacherData.id || (teacherData.assigned_classes || []).includes(c.id)
       );
       setClasses(teacherClasses);
 
+      const teacherClassIds = teacherClasses.map(c => c.id);
       const allExams = await getExamsBySchool(schoolId);
       const teacherExams = allExams.filter(e =>
-        (teacherData.assigned_classes || []).includes(e.class_id)
+        teacherClassIds.includes(e.class_id)
       );
       setExams(teacherExams);
     } catch (err) {

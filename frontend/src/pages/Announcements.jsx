@@ -31,7 +31,7 @@ export default function Announcements() {
     if (!teacher) { navigate(createPageUrl('JoinSchool')); return; }
     setTeacherData(teacher);
     const allClasses = await getClasses(teacher.school_id);
-    const myClasses = allClasses.filter(c => c.teacher_id === teacher.id);
+    const myClasses = allClasses.filter(c => c.teacher_id === teacher.id || (teacher.assigned_classes || []).includes(c.id));
     setClasses(myClasses);
     if (myClasses.length > 0) setSelectedClassId(myClasses[0].id);
     setLoading(false);

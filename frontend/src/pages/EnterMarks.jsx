@@ -10,7 +10,7 @@ import {
 } from '@/lib/db';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { ArrowLeft, Save, Loader2, CheckCircle2, Award, Calculator, Sparkles } from 'lucide-react';
+import { ArrowLeft, Save, Loader2 } from 'lucide-react';
 
 const EXAM_TYPES = [
   { key: 'UT', label: 'Unit Test', color: 'bg-blue-500', light: 'bg-blue-50 border-blue-200', text: 'text-blue-700' },
@@ -317,7 +317,7 @@ export default function EnterMarks() {
                       const val = marks[student.id];
                       const numVal = Number(val);
                       const isEntered = val !== undefined && val !== '';
-                      const isPassing = isEntered && numVal >= (selectedExam.max_marks * 0.33);
+                      const isPassing = isEntered && numVal >= (selectedExam.pass_marks ?? (selectedExam.max_marks * 0.33));
 
                       return (
                         <tr key={student.id} className="hover:bg-slate-50">

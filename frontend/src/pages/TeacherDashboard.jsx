@@ -82,9 +82,8 @@ export default function TeacherDashboard() {
         } catch (e) {
           setPendingLeaves(0);
         }
-      } else {
-        setLoading(false);
       }
+      setLoading(false);
     } catch (err) {
       console.error('Teacher dashboard load error:', err);
       setLoading(false);

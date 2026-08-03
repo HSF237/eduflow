@@ -34,7 +34,7 @@ export default function ExamSchedule() {
       const teacher = await getTeacherByUserId(user.uid);
       if (!teacher) { navigate(createPageUrl('JoinSchool')); return; }
       const all = await getClasses(teacher.school_id);
-      const mine = all.filter(c => c.teacher_id === teacher.id);
+      const mine = all.filter(c => c.teacher_id === teacher.id || (teacher.assigned_classes || []).includes(c.id));
       setClasses(mine);
       if (mine.length > 0) setSelectedClassId(mine[0].id);
       else setLoading(false);
