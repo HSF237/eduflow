@@ -9,7 +9,6 @@ import {
   deleteClass,
   getStudents,
   getTeachers,
-  generateCode,
   getSchoolByPrincipal,
 } from '@/lib/db';
 import {
@@ -19,8 +18,6 @@ import {
   BookOpen,
   Trash2,
   Edit2,
-  Copy,
-  Check,
   UserCog,
 } from 'lucide-react';
 
@@ -39,8 +36,7 @@ export default function ManageClasses() {
   const [editingClass, setEditingClass] = useState(null);
   const [formData, setFormData] = useState({ name: '', section: '' });
 
-  // Copy parent code feedback
-  const [copiedCode, setCopiedCode] = useState(null);
+
 
   useEffect(() => {
     if (!isLoadingAuth) loadData(authUser);
@@ -106,7 +102,6 @@ export default function ManageClasses() {
           school_id: schoolId,
           name: formData.name.trim(),
           section: formData.section.trim(),
-          parent_code: generateCode(6),
         });
       }
       await loadData(authUser);
@@ -143,11 +138,7 @@ export default function ManageClasses() {
     }
   };
 
-  const copyParentCode = (code) => {
-    navigator.clipboard.writeText(code).catch(() => {});
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
-  };
+
 
   const getStudentCount = (classId) =>
     students.filter((s) => s.class_id === classId).length;
@@ -265,28 +256,7 @@ export default function ManageClasses() {
                     </select>
                   </div>
 
-                  {/* Parent Code */}
-                  {cls.parent_code && (
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-2.5 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-purple-700 mb-0.5">Parent Code</p>
-                        <code className="text-sm font-mono font-bold text-purple-700">
-                          {cls.parent_code}
-                        </code>
-                      </div>
-                      <button
-                        onClick={() => copyParentCode(cls.parent_code)}
-                        className="p-1.5 rounded-md hover:bg-purple-100 transition-colors"
-                        title="Copy code"
-                      >
-                        {copiedCode === cls.parent_code ? (
-                          <Check className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <Copy className="w-4 h-4 text-purple-600" />
-                        )}
-                      </button>
-                    </div>
-                  )}
+
                 </div>
               );
             })}
