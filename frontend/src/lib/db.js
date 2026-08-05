@@ -473,24 +473,9 @@ export const getStudents = async (schoolId) => {
     try {
       const parsed = JSON.parse(globalLocal);
       parsed.forEach(s => {
-        if (!schoolId || s.school_id === schoolId || !s.school_id) map.set(s.id, s);
+        if (!schoolId || s.school_id === schoolId) map.set(s.id, s);
       });
-      if (map.size === 0 && parsed.length > 0) {
-        parsed.forEach(s => map.set(s.id, s));
-      }
     } catch (e) {}
-  }
-
-  if (map.size === 0) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('students_')) {
-        try {
-          const list = JSON.parse(localStorage.getItem(key));
-          if (Array.isArray(list)) list.forEach(s => map.set(s.id, s));
-        } catch (e) {}
-      }
-    }
   }
 
   return sortBy(Array.from(map.values()), 'name');
@@ -546,14 +531,7 @@ export const getStudentByParentCode = async (code) => {
     }
   }
 
-  // 2. Fallback for Super Admin or local testing: any code returned as mock student
-  return {
-    id: `student_${rawCode}`,
-    name: `Student (${cleanCode})`,
-    class_id: 'class_demo',
-    school_id: 'super_admin_school',
-    parent_code: cleanCode
-  };
+  return null;
 };
 export const createStudent = async (data) => {
   const parentCode = data.parent_code || generateParentCode();
