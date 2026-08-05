@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from '@/lib/firebase';
-import { updateProfile } from 'firebase/auth';
 import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
@@ -92,7 +90,10 @@ export default function PrincipalSettings() {
   const saveProfile = async () => {
     setSaving(true);
     try {
-      await updateProfile(auth.currentUser, { displayName: profileData.display_name });
+      if (authUser) {
+        const updatedUser = { ...authUser, name: profileData.display_name };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
       alert('Profile updated!');
     } catch (err) {
       console.error('Error saving profile:', err);

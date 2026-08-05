@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { auth } from '@/lib/firebase';
-import { updateProfile } from 'firebase/auth';
 import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
@@ -43,7 +41,10 @@ export default function TeacherSettings() {
     setSaving(true);
     try {
       await updateTeacher(teacher.id, { name: profileData.name, phone: profileData.phone });
-      await updateProfile(auth.currentUser, { displayName: profileData.name });
+      if (authUser) {
+        const updatedUser = { ...authUser, name: profileData.name };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
       alert('Profile updated!');
     } catch (err) {
       console.error('Save error:', err);
