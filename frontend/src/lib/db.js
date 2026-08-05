@@ -179,7 +179,7 @@ const saveClassToLocal = (schoolId, newClass) => {
 export const getClasses = async (schoolId) => {
   const map = new Map();
 
-  // 1. Try Firestore with school filter first
+  // 1. Fetch from Firestore for the specific schoolId if provided
   if (schoolId) {
     try {
       const q = query(collection(db, 'classes'), where('school_id', '==', schoolId));
@@ -187,43 +187,33 @@ export const getClasses = async (schoolId) => {
     } catch (err) {
       console.warn('getClasses filtered Firestore query failed:', err);
     }
-  }
-
-  // 2. If still nothing (wrong schoolId or rules block filtered query), fetch ALL from Firestore
-  if (map.size === 0) {
+  } else {
     try {
       snapAll(await getDocs(collection(db, 'classes'))).forEach(c => map.set(c.id, c));
     } catch (err) {
-      console.warn('getClasses unfiltered Firestore query also failed:', err);
+      console.warn('getClasses unfiltered Firestore query failed:', err);
     }
   }
 
-  // 3. Merge school-specific localStorage cache
+  // 2. Merge school-specific localStorage cache
   if (schoolId) {
     try {
       const local = localStorage.getItem(`classes_${schoolId}`);
-      if (local) JSON.parse(local).forEach(c => map.set(c.id, c));
+      if (local) JSON.parse(local).forEach(c => {
+        if (!schoolId || c.school_id === schoolId) map.set(c.id, c);
+      });
     } catch (e) {}
   }
 
-  // 4. Always merge all_local_classes (never filter by schoolId — cross-device safety)
+  // 3. Filter global local storage strictly by schoolId
   try {
     const globalLocal = localStorage.getItem('all_local_classes');
-    if (globalLocal) JSON.parse(globalLocal).forEach(c => map.set(c.id, c));
-  } catch (e) {}
-
-  // 5. Last resort: scan every classes_* key in localStorage
-  if (map.size === 0) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('classes_')) {
-        try {
-          const list = JSON.parse(localStorage.getItem(key));
-          if (Array.isArray(list)) list.forEach(c => map.set(c.id, c));
-        } catch (e) {}
-      }
+    if (globalLocal) {
+      JSON.parse(globalLocal).forEach(c => {
+        if (!schoolId || c.school_id === schoolId) map.set(c.id, c);
+      });
     }
-  }
+  } catch (e) {}
 
   return sortBy(Array.from(map.values()), 'name');
 };
@@ -362,7 +352,11 @@ export const getTeachers = async (schoolId) => {
   if (schoolId) {
     const local = localStorage.getItem(`teachers_${schoolId}`);
     if (local) {
-      try { JSON.parse(local).forEach(t => map.set(t.id, t)); } catch (e) {}
+      try {
+        JSON.parse(local).forEach(t => {
+          if (!schoolId || t.school_id === schoolId) map.set(t.id, t);
+        });
+      } catch (e) {}
     }
   }
 
@@ -371,11 +365,8 @@ export const getTeachers = async (schoolId) => {
     try {
       const parsed = JSON.parse(globalLocal);
       parsed.forEach(t => {
-        if (!schoolId || t.school_id === schoolId || !t.school_id) map.set(t.id, t);
+        if (!schoolId || t.school_id === schoolId) map.set(t.id, t);
       });
-      if (map.size === 0 && parsed.length > 0) {
-        parsed.forEach(t => map.set(t.id, t));
-      }
     } catch (e) {}
   }
 
