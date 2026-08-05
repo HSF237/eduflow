@@ -1,8 +1,15 @@
-import { db } from './firebase';
-import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  query, where, setDoc, serverTimestamp
-} from 'firebase/firestore';
+// Firestore stubs for self-hosted fallback mode
+const collection = () => ({});
+const doc = () => ({});
+const getDoc = async () => ({ exists: () => false, data: () => ({}) });
+const getDocs = async () => ({ empty: true, docs: [], size: 0 });
+const addDoc = async () => ({ id: 'local_' + Math.random().toString(36).substring(2, 9) });
+const updateDoc = async () => {};
+const deleteDoc = async () => {};
+const query = () => ({});
+const where = () => ({});
+const setDoc = async () => {};
+const serverTimestamp = () => new Date().toISOString();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export const generateCode = (len = 6) =>
