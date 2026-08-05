@@ -58,9 +58,6 @@ export const getSchoolByPrincipal = async (userId) => {
   const local = localStorage.getItem(`school_principal_${userId}`);
   if (local) return JSON.parse(local);
 
-  const defaultSchool = localStorage.getItem('default_created_school');
-  if (defaultSchool) return JSON.parse(defaultSchool);
-
   // Fallback for Super Admin zerox9861@gmail.com
   const currentUserEmail = auth?.currentUser?.email?.toLowerCase();
   if (currentUserEmail === 'zerox9861@gmail.com') {
@@ -84,7 +81,6 @@ export const createSchool = async (data) => {
     const school = { id: ref.id, ...data };
     localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
     localStorage.setItem(`school_${ref.id}`, JSON.stringify(school));
-    localStorage.setItem('default_created_school', JSON.stringify(school));
     return school;
   } catch (err) {
     console.warn('Firestore createSchool failed, saving to local fallback:', err);
@@ -92,7 +88,6 @@ export const createSchool = async (data) => {
     const school = { id: mockId, ...data, created_at: new Date().toISOString() };
     localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
     localStorage.setItem(`school_${mockId}`, JSON.stringify(school));
-    localStorage.setItem('default_created_school', JSON.stringify(school));
     return school;
   }
 };
