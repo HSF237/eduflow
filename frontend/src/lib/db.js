@@ -207,38 +207,55 @@ export const getClasses = async (schoolId) => {
     try {
       const local = localStorage.getItem(`classes_${schoolId}`);
       if (local) JSON.parse(local).forEach(c => {
-        if (!schoolId || c.school_id === schoolId) map.set(c.id, c);
+        if (!schoolId || c.school_id === schoolId || !c.school_id) map.set(c.id, c);
       });
     } catch (e) {}
   }
 
-  // 3. Filter global local storage strictly by schoolId
+  // 3. Filter global local storage by schoolId
   try {
     const globalLocal = localStorage.getItem('all_local_classes');
     if (globalLocal) {
       JSON.parse(globalLocal).forEach(c => {
-        if (!schoolId || c.school_id === schoolId) map.set(c.id, c);
+        if (!schoolId || c.school_id === schoolId || !c.school_id) map.set(c.id, c);
       });
     }
   } catch (e) {}
+
+  // 4. Scan all classes_* keys as fallback for matching schoolId
+  if (schoolId && map.size === 0) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('classes_')) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key));
+          if (Array.isArray(list)) {
+            list.forEach(c => {
+              if (c.school_id === schoolId || key === `classes_${schoolId}`) map.set(c.id, c);
+            });
+          }
+        } catch (e) {}
+      }
+    }
+  }
 
   return sortBy(Array.from(map.values()), 'name');
 };
 
 
 export const createClass = async (data) => {
+  const classData = { ...data, school_id: data.school_id };
+  let newClass = null;
   try {
-    const ref = await addDoc(collection(db, 'classes'), { ...data, created_at: serverTimestamp() });
-    const newClass = { id: ref.id, ...data };
-    saveClassToLocal(data.school_id, newClass);
-    return newClass;
+    const ref = await addDoc(collection(db, 'classes'), { ...classData, created_at: serverTimestamp() });
+    newClass = { id: ref.id, ...classData };
   } catch (err) {
     console.warn('createClass Firestore write failed, saving to local storage fallback:', err);
     const mockId = 'class_' + Math.random().toString(36).substring(2, 9);
-    const newClass = { id: mockId, ...data, created_at: new Date().toISOString() };
-    saveClassToLocal(data.school_id, newClass);
-    return newClass;
+    newClass = { id: mockId, ...classData, created_at: new Date().toISOString() };
   }
+  saveClassToLocal(data.school_id, newClass);
+  return newClass;
 };
 
 export const updateClass = async (id, data) => {
