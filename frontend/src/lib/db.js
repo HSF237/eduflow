@@ -97,20 +97,30 @@ export const getSchoolByPrincipal = async (userId) => {
 };
 
 export const createSchool = async (data) => {
+  const cleanCode = (data.code || '').trim().toUpperCase();
+  let school = null;
   try {
-    const ref = await addDoc(collection(db, 'schools'), { ...data, created_at: serverTimestamp() });
-    const school = { id: ref.id, ...data };
-    localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
-    localStorage.setItem(`school_${ref.id}`, JSON.stringify(school));
-    return school;
+    const ref = await addDoc(collection(db, 'schools'), { ...data, code: cleanCode, created_at: serverTimestamp() });
+    school = { id: ref.id, ...data, code: cleanCode };
   } catch (err) {
     console.warn('Firestore createSchool failed, saving to local fallback:', err);
     const mockId = 'school_' + Math.random().toString(36).substring(2, 9);
-    const school = { id: mockId, ...data, created_at: new Date().toISOString() };
-    localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
-    localStorage.setItem(`school_${mockId}`, JSON.stringify(school));
-    return school;
+    school = { id: mockId, ...data, code: cleanCode, created_at: new Date().toISOString() };
   }
+  if (data.principal_id) localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(school));
+  localStorage.setItem(`school_${school.id}`, JSON.stringify(school));
+  if (cleanCode) localStorage.setItem(`school_code_${cleanCode}`, JSON.stringify(school));
+
+  try {
+    const allLocal = localStorage.getItem('all_local_schools');
+    const list = allLocal ? JSON.parse(allLocal) : [];
+    const idx = list.findIndex(s => s.id === school.id || (s.code && s.code.toUpperCase() === cleanCode));
+    if (idx >= 0) list[idx] = school; else list.push(school);
+    localStorage.setItem('all_local_schools', JSON.stringify(list));
+  } catch (e) {}
+
+  broadcastSync('SAVE_SCHOOL', school);
+  return school;
 };
 
 export const updateSchool = async (id, data) => {
@@ -124,6 +134,7 @@ export const updateSchool = async (id, data) => {
   const updated = { ...existing, id, ...data };
   if (data.principal_id) localStorage.setItem(`school_principal_${data.principal_id}`, JSON.stringify(updated));
   localStorage.setItem(`school_${id}`, JSON.stringify(updated));
+  if (updated.code) localStorage.setItem(`school_code_${updated.code.toUpperCase()}`, JSON.stringify(updated));
   return updated;
 };
 
@@ -137,6 +148,7 @@ export const getSchoolById = async (id) => {
   const local = localStorage.getItem(`school_${id}`);
   return local ? JSON.parse(local) : null;
 };
+
 export const getSchoolByCode = async (code) => {
   const cleanCode = (code || '').trim().toUpperCase();
   if (!cleanCode) return null;
@@ -149,9 +161,25 @@ export const getSchoolByCode = async (code) => {
     console.warn('getSchoolByCode Firestore query failed:', err);
   }
 
+  // 1. Direct school_code_ lookup
+  const byCodeKey = localStorage.getItem(`school_code_${cleanCode}`);
+  if (byCodeKey) {
+    try { return JSON.parse(byCodeKey); } catch (e) {}
+  }
+
+  // 2. Check all_local_schools
+  try {
+    const allLocal = localStorage.getItem('all_local_schools');
+    if (allLocal) {
+      const found = JSON.parse(allLocal).find(s => s.code && s.code.toUpperCase() === cleanCode);
+      if (found) return found;
+    }
+  } catch (e) {}
+
+  // 3. Scan all school keys in localStorage
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('school_')) {
+    if (key && (key.startsWith('school_') || key.startsWith('school_principal_'))) {
       try {
         const val = JSON.parse(localStorage.getItem(key));
         if (val && val.code && val.code.toUpperCase() === cleanCode) {
