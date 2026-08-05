@@ -183,36 +183,32 @@ export const getClasses = async (schoolId) => {
   if (schoolId) {
     try {
       const local = localStorage.getItem(`classes_${schoolId}`);
-      if (local) JSON.parse(local).forEach(c => {
-        if (!schoolId || c.school_id === schoolId || !c.school_id) map.set(c.id, c);
-      });
+      if (local) JSON.parse(local).forEach(c => map.set(c.id, c));
     } catch (e) {}
   }
 
-  // 3. Filter global local storage by schoolId
+  // 3. Merge global local storage matching schoolId
   try {
     const globalLocal = localStorage.getItem('all_local_classes');
     if (globalLocal) {
       JSON.parse(globalLocal).forEach(c => {
-        if (!schoolId || c.school_id === schoolId || !c.school_id) map.set(c.id, c);
+        if (!schoolId || c.school_id === schoolId) map.set(c.id, c);
       });
     }
   } catch (e) {}
 
-  // 4. Scan all classes_* keys as fallback for matching schoolId
-  if (schoolId && map.size === 0) {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('classes_')) {
-        try {
-          const list = JSON.parse(localStorage.getItem(key));
-          if (Array.isArray(list)) {
-            list.forEach(c => {
-              if (c.school_id === schoolId || key === `classes_${schoolId}`) map.set(c.id, c);
-            });
-          }
-        } catch (e) {}
-      }
+  // 4. Scan all classes_* keys in localStorage
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('classes_')) {
+      try {
+        const list = JSON.parse(localStorage.getItem(key));
+        if (Array.isArray(list)) {
+          list.forEach(c => {
+            if (!schoolId || c.school_id === schoolId || key === `classes_${schoolId}`) map.set(c.id, c);
+          });
+        }
+      } catch (e) {}
     }
   }
 
