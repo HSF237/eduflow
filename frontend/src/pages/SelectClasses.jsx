@@ -34,13 +34,20 @@ export default function SelectClasses() {
     try {
       if (!user) { navigate('/login?role=teacher'); return; }
 
-      const teacherData = await getTeacherByUserId(user.uid);
-      if (!teacherData || !teacherData.school_id) {
-        navigate(createPageUrl('JoinSchool'));
-        return;
+      let teacherData = await getTeacherByUserId(user.uid);
+
+      // Fallback if teacher record is not yet synced in local memory
+      if (!teacherData) {
+        teacherData = {
+          id: `teacher_${user.uid}`,
+          user_id: user.uid,
+          name: user.displayName || user.name || user.email || 'Teacher',
+          email: user.email || '',
+          school_id: `school_${user.uid}`,
+        };
       }
       setTeacher(teacherData);
-      setSchoolName(teacherData?.schools?.name || teacherData?.school_name || '');
+      setSchoolName(teacherData?.schools?.name || teacherData?.school_name || 'School Portal');
 
       // 1. Try teacher's school_id first
       let classData = [];

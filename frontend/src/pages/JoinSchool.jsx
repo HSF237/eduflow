@@ -80,7 +80,7 @@ export default function JoinSchool() {
         localStorage.setItem(`teacher_user_${userId}`, JSON.stringify(teacherData));
       } catch (e) {}
 
-      navigate(createPageUrl('SelectClasses'));
+      navigate('/selectclasses');
     } catch (err) {
       console.error('handleJoin error:', err);
       setError(err.message || 'Failed to join school. Please try again.');
