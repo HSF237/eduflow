@@ -140,25 +140,7 @@ export const getSchoolByCode = async (code) => {
     }
   }
 
-  const defaultSchool = localStorage.getItem('default_created_school');
-  if (defaultSchool) {
-    try {
-      const parsed = JSON.parse(defaultSchool);
-      if (parsed) {
-        if (parsed.code && parsed.code.toUpperCase() === cleanCode) return parsed;
-        return { ...parsed, code: cleanCode };
-      }
-    } catch (e) {}
-  }
-
-  const currentUserEmail = auth?.currentUser?.email?.toLowerCase();
-  return {
-    id: `school_${cleanCode}`,
-    name: `EduSphere Academy (${cleanCode})`,
-    code: cleanCode,
-    address: 'Universal Campus',
-    phone: '9496829330'
-  };
+  return null;
 };
 
 // ── Classes ──────────────────────────────────────────────────────────────────
@@ -424,18 +406,7 @@ export const getTeacherByUserId = async (userId) => {
     } catch (e) {}
   }
 
-  const currentUserEmail = auth?.currentUser?.email?.toLowerCase();
-  const defaultSchool = localStorage.getItem('default_created_school');
-  const parsedSchool = defaultSchool ? JSON.parse(defaultSchool) : null;
-
-  return {
-    id: `teacher_${userId}`,
-    name: auth?.currentUser?.displayName || 'Teacher',
-    user_id: userId,
-    email: currentUserEmail || '',
-    school_id: parsedSchool?.id || 'super_admin_school',
-    schools: parsedSchool || { id: 'super_admin_school', name: 'EduSphere Admin Academy' }
-  };
+  return null;
 };
 
 export const updateTeacher = async (id, data) => {
