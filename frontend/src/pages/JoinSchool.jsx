@@ -41,47 +41,52 @@ export default function JoinSchool() {
 
   const handleJoin = async (e) => {
     e.preventDefault();
+    if (!code.trim()) return;
     setError('');
     setSubmitting(true);
 
-    let foundSchool = null;
-    try {
-      foundSchool = await getSchoolByCode(code.toUpperCase().trim());
-    } catch (err) {
-      console.error('getSchoolByCode error:', err);
-    }
-
-    if (!foundSchool) {
-      // Build a local school from the code so joining always works
-      foundSchool = {
-        id: `school_${code.toUpperCase().trim()}`,
-        name: `School (${code.toUpperCase().trim()})`,
-        code: code.toUpperCase().trim(),
-      };
-    }
+    const cleanCode = code.trim().toUpperCase();
 
     try {
-      await upsertTeacher({
-        user_id: authUser.uid,
-        school_id: foundSchool.id,
-        email: authUser.email,
-        name: authUser.displayName || authUser.email,
-      });
-    } catch (err) {
-      // upsertTeacher already saves to localStorage on error — safe to continue
-      console.warn('upsertTeacher had an error but continuing (localStorage saved):', err);
-    }
+      let foundSchool = await getSchoolByCode(cleanCode).catch(() => null);
 
-    // Always save school to localStorage so other pages can find it
-    try {
-      localStorage.setItem(`school_${foundSchool.id}`, JSON.stringify(foundSchool));
-      if (!localStorage.getItem('default_created_school')) {
-        localStorage.setItem('default_created_school', JSON.stringify(foundSchool));
+      if (!foundSchool) {
+        foundSchool = {
+          id: `school_${cleanCode}`,
+          name: `School (${cleanCode})`,
+          code: cleanCode,
+        };
       }
-    } catch (e) {}
 
-    setSubmitting(false);
-    navigate(createPageUrl('SelectClasses'));
+      const userId = authUser?.uid || authUser?.id || 'teacher_' + Math.random().toString(36).substring(2, 9);
+      const userEmail = authUser?.email || 'teacher@school.com';
+      const userName = authUser?.displayName || authUser?.name || userEmail;
+
+      const teacherData = {
+        user_id: userId,
+        school_id: foundSchool.id,
+        email: userEmail,
+        name: userName,
+        schools: foundSchool,
+      };
+
+      await upsertTeacher(teacherData).catch(err => {
+        console.warn('upsertTeacher warning:', err);
+      });
+
+      try {
+        localStorage.setItem(`school_${foundSchool.id}`, JSON.stringify(foundSchool));
+        localStorage.setItem(`school_code_${cleanCode}`, JSON.stringify(foundSchool));
+        localStorage.setItem(`teacher_user_${userId}`, JSON.stringify(teacherData));
+      } catch (e) {}
+
+      navigate(createPageUrl('SelectClasses'));
+    } catch (err) {
+      console.error('handleJoin error:', err);
+      setError(err.message || 'Failed to join school. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
 
