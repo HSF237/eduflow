@@ -468,14 +468,13 @@ export const updateTeacher = async (id, data) => {
 };
 
 export const upsertTeacher = async (data) => {
+  let teacher = null;
   try {
     const q = query(collection(db, 'teachers'), where('user_id', '==', data.user_id));
     const s = await getDocs(q);
     if (s.empty) {
       const ref = await addDoc(collection(db, 'teachers'), { ...data, created_at: serverTimestamp() });
-      const teacher = { id: ref.id, ...data };
-      if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
-      return teacher;
+      teacher = { id: ref.id, ...data };
     } else {
       await updateDoc(s.docs[0].ref, data);
       const teacher = { id: s.docs[0].id, ...data };

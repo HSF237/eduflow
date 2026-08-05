@@ -35,6 +35,10 @@ export default function SelectClasses() {
       if (!user) { navigate('/login?role=teacher'); return; }
 
       const teacherData = await getTeacherByUserId(user.uid);
+      if (!teacherData || !teacherData.school_id) {
+        navigate(createPageUrl('JoinSchool'));
+        return;
+      }
       setTeacher(teacherData);
       setSchoolName(teacherData?.schools?.name || teacherData?.school_name || '');
 
