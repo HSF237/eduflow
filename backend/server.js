@@ -1,5 +1,4 @@
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
@@ -12,25 +11,22 @@ app.use(cors());
 app.use(express.json());
 
 // Routers
-const userRouter = require('./routers/userRouter');
+const authRouter = require('./routers/authRouter');
 const schoolRouter = require('./routers/schoolRouter');
 const studentRouter = require('./routers/studentRouter');
+const storageRouter = require('./routers/storageRouter');
 
-app.use('/api/users', userRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/schools', schoolRouter);
 app.use('/api/students', studentRouter);
+app.use('/api/storage', storageRouter);
 
-// Basic Route
+// Health Check Route
 app.get('/', (req, res) => {
-  res.send('EduSphere API is running');
+  res.json({ status: 'healthy', message: 'EduFlow Self-Hosted REST API is running' });
 });
-
-// Database Connection
-mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/edusphere')
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 EduFlow Self-Hosted Backend running on port ${PORT}`);
 });

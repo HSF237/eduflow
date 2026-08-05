@@ -44,9 +44,9 @@ export default function RoleSelection() {
     }
 
     if (role === 'principal') {
-      navigate(user ? createPageUrl('SetupSchool') : '/login?role=principal');
+      navigate(user ? createPageUrl('SetupSchool') : '/register?role=principal');
     } else if (role === 'teacher') {
-      navigate(user ? createPageUrl('JoinSchool') : '/login?role=teacher');
+      navigate(user ? createPageUrl('JoinSchool') : '/register?role=teacher');
     } else {
       navigate(createPageUrl('ParentLogin'));
     }

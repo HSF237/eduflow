@@ -1,24 +1,31 @@
 {
-  "name": "backend",
+  "name": "eduflow-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "EduFlow Self-Hosted Backend (Node.js, Express, PostgreSQL, Prisma, MinIO, Custom Auth)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "migrate:data": "node scripts/migrate-firebase-to-pg.js",
+    "migrate:storage": "node scripts/migrate-storage-to-minio.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/s3-request-presigner": "^3.600.0",
+    "@prisma/client": "^5.16.0",
     "bcryptjs": "^3.0.3",
-    "body-parser": "^2.2.2",
     "cors": "^2.8.6",
-    "dotenv": "^17.4.1",
-    "express": "^5.2.1",
-    "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.4.1",
-    "socket.io": "^4.8.3"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4",
+    "prisma": "^5.16.0"
   }
 }

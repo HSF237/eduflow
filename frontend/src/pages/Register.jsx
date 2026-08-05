@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { GraduationCap, Mail, Lock, Loader2, ArrowRight, User } from 'lucide-react';
+import { useAuth } from '@/hooks/AuthContext';
+
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export default function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const roleParam = searchParams.get('role'); // 'principal' or 'teacher'
+  const { loginUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
+
+  const backendRole = roleParam === 'principal' ? 'ADMIN' : 'TEACHER';
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -19,14 +25,38 @@ export default function Register() {
 
     setLoading(true);
     try {
-      const { user } = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      await updateProfile(user, { displayName: formData.fullName });
-      navigate(createPageUrl('RoleSelection'));
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: formData.fullName,
+          role: backendRole,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      loginUser(data.user, data.accessToken, data.refreshToken);
+
+      // Seamless onboarding routing (No re-selecting role!)
+      if (roleParam === 'principal' || backendRole === 'ADMIN') {
+        navigate(createPageUrl('SetupSchool'));
+      } else if (roleParam === 'teacher') {
+        navigate(createPageUrl('JoinSchool'));
+      } else {
+        navigate(createPageUrl('RoleSelection'));
+      }
     } catch (err) {
-      if (err.code === 'auth/email-already-in-use') setError('This email is already registered. Please login.');
-      else setError('Registration failed. Please try again.');
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -40,8 +70,12 @@ export default function Register() {
 
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">Create Account</h2>
-            <p className="text-slate-500 text-sm">Join the EduSphere Institutional Network</p>
+            <h2 className="text-2xl font-bold text-slate-900 uppercase tracking-tight">
+              {roleParam === 'principal' ? 'Principal Registration' : 'Create Account'}
+            </h2>
+            <p className="text-slate-500 text-sm">
+              {roleParam === 'principal' ? 'Register as Principal to Setup your School' : 'Join the EduFlow Self-Hosted Network'}
+            </p>
           </div>
 
           {error && (
@@ -90,8 +124,8 @@ export default function Register() {
             </div>
 
             <button type="submit" disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 rounded-xl font-bold uppercase tracking-widest text-xs mt-2 flex items-center justify-center gap-2 disabled:opacity-60">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><span>Register for Portal</span><ArrowRight className="w-4 h-4" /></>}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 rounded-xl font-bold uppercase tracking-widest text-xs mt-2 flex items-center justify-center gap-2 disabled:opacity-60 transition-colors shadow-md">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><span>{roleParam === 'principal' ? 'Continue to School Setup' : 'Register for Portal'}</span><ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
 

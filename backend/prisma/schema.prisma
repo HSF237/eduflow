@@ -1,0 +1,448 @@
+// backend/prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ── Enums ─────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN       // Principal / Super Admin
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  LEAVE
+  PENDING
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ── Authentication & Users ───────────────────────────────────────────────────
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  passwordHash String         @map("password_hash")
+  role         Role
+  name         String
+  phone        String?
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  refreshTokens RefreshToken[]
+  teacherProfile Teacher?
+  studentProfile Student?     @relation("StudentUser")
+  parentStudents Student[]     @relation("ParentStudents")
+  leaveRequests  LeaveRequest[] @relation("ParentLeaves")
+  sentMessages   Message[]      @relation("SentMessages")
+  fcmTokens      FcmToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ── School & Administration ──────────────────────────────────────────────────
+
+model School {
+  id                 String   @id @default(uuid())
+  name               String
+  code               String   @unique
+  address            String?
+  phone              String?
+  principalId        String?  @map("principal_id")
+  principalEmail     String?  @map("principal_email")
+  academicYearStart  String?  @map("academic_year_start")
+  academicYearEnd    String?  @map("academic_year_end")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  classes        Class[]
+  teachers       Teacher[]
+  students       Student[]
+  subjects       Subject[]
+  exams          Exam[]
+  announcements  Announcement[]
+  leaveRequests  LeaveRequest[]
+  dailyDiaries   DailyDiary[]
+  examSchedules  ExamSchedule[]
+  substituteLogs SubstituteLog[]
+  ptmEvents      PtmEvent[]
+  messages       Message[]
+
+  @@map("schools")
+}
+
+// ── Classes & Subjects ────────────────────────────────────────────────────────
+
+model Class {
+  id             String   @id @default(uuid())
+  schoolId       String   @map("school_id")
+  school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name           String
+  section        String?
+  parentCode     String?  @unique @map("parent_code")
+  classTeacherId String?  @map("class_teacher_id")
+  classTeacher   Teacher? @relation("ClassTeacher", fields: [classTeacherId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  students       Student[]
+  subjects       Subject[]
+  attendances    Attendance[]
+  exams          Exam[]
+  homeworks      Homework[]
+  announcements  Announcement[]
+  leaveRequests  LeaveRequest[]
+  timetable      Timetable?
+  dailyDiaries   DailyDiary[]
+  examSchedules  ExamSchedule[]
+  substituteLogs SubstituteLog[]
+  ptmEvents      PtmEvent[]
+
+  @@index([schoolId])
+  @@map("classes")
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId   String?  @map("class_id")
+  class     Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  name      String
+  code      String?
+  teacherId String?  @map("teacher_id")
+  teacher   Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  exams          Exam[]
+  homeworks      Homework[]
+  examSchedules  ExamSchedule[]
+  substituteLogs SubstituteLog[]
+
+  @@index([schoolId, classId])
+  @@map("subjects")
+}
+
+// ── Staff & Students ──────────────────────────────────────────────────────────
+
+model Teacher {
+  id          String   @id @default(uuid())
+  userId      String?  @unique @map("user_id")
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  schoolId    String   @map("school_id")
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String
+  email       String
+  phone       String?
+  designation String?
+  subjects    String[]
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  managedClasses Class[]         @relation("ClassTeacher")
+  taughtSubjects Subject[]
+  homeworks      Homework[]
+  dailyDiaries   DailyDiary[]
+  absentLogs     SubstituteLog[] @relation("AbsentTeacher")
+  substituteLogs SubstituteLog[] @relation("SubstituteTeacher")
+
+  @@index([schoolId])
+  @@map("teachers")
+}
+
+model Student {
+  id          String    @id @default(uuid())
+  userId      String?   @unique @map("user_id")
+  user        User?     @relation("StudentUser", fields: [userId], references: [id], onDelete: SetNull)
+  parentId    String?   @map("parent_id")
+  parentUser  User?     @relation("ParentStudents", fields: [parentId], references: [id], onDelete: SetNull)
+  schoolId    String    @map("school_id")
+  school      School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId     String    @map("class_id")
+  class       Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  rollNo      Int?      @map("roll_no")
+  name        String
+  gender      String?
+  dob         DateTime?
+  admissionNo String?   @map("admission_no")
+  parentName  String?   @map("parent_name")
+  parentPhone String?   @map("parent_phone")
+  parentEmail String?   @map("parent_email")
+  parentCode  String    @unique @map("parent_code")
+  photoUrl    String?   @map("photo_url")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  attendances   Attendance[]
+  marks         Mark[]
+  messages      Message[]
+  leaveRequests LeaveRequest[]
+
+  @@index([schoolId, classId])
+  @@map("students")
+}
+
+// ── Academics, Attendance & Marks ─────────────────────────────────────────────
+
+model Attendance {
+  id        String           @id @default(uuid())
+  schoolId  String           @map("school_id")
+  classId   String           @map("class_id")
+  class     Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId String           @map("student_id")
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      String
+  status    AttendanceStatus
+  reason    String?
+  updatedBy String?          @map("updated_by")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@unique([studentId, date])
+  @@index([classId, date])
+  @@index([schoolId, date])
+  @@map("attendance")
+}
+
+model Exam {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId      String   @map("class_id")
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId    String?  @map("subject_id")
+  subject      Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  name         String
+  term         String?
+  date         String?
+  maxMarks     Float    @map("max_marks")
+  passingMarks Float?   @map("passing_marks")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  marks         Mark[]
+  examSchedules ExamSchedule[]
+
+  @@index([schoolId, classId])
+  @@map("exams")
+}
+
+model Mark {
+  id            String   @id @default(uuid())
+  examId        String   @map("exam_id")
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId     String   @map("student_id")
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marksObtained Float    @map("marks_obtained")
+  grade         String?
+  remarks       String?
+  updatedBy     String?  @map("updated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@index([studentId])
+  @@map("marks")
+}
+
+// ── Communication & Activities ────────────────────────────────────────────────
+
+model Message {
+  id          String   @id @default(uuid())
+  schoolId    String?  @map("school_id")
+  school      School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentId   String   @map("student_id")
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  senderId    String   @map("sender_id")
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  senderRole  Role     @map("sender_role")
+  content     String
+  attachments String[]
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([studentId, createdAt])
+  @@map("messages")
+}
+
+model Homework {
+  id          String   @id @default(uuid())
+  schoolId    String?  @map("school_id")
+  classId     String   @map("class_id")
+  class       Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId   String?  @map("subject_id")
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacherId   String?  @map("teacher_id")
+  teacher     Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  title       String
+  description String
+  dueDate     String   @map("due_date")
+  attachments String[]
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([classId])
+  @@map("homework")
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  schoolId    String   @map("school_id")
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId     String?  @map("class_id")
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  targetRole  Role?    @map("target_role")
+  createdBy   String?  @map("created_by")
+  attachments String[]
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([schoolId, classId])
+  @@map("announcements")
+}
+
+model LeaveRequest {
+  id        String      @id @default(uuid())
+  schoolId  String      @map("school_id")
+  school    School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId   String      @map("class_id")
+  class     Class       @relation(fields: [classId], references: [id], onDelete: Cascade)
+  studentId String      @map("student_id")
+  student   Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parentId  String?     @map("parent_id")
+  parent    User?       @relation("ParentLeaves", fields: [parentId], references: [id], onDelete: SetNull)
+  startDate String      @map("start_date")
+  endDate   String      @map("end_date")
+  reason    String
+  status    LeaveStatus @default(PENDING)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@index([schoolId, classId])
+  @@index([studentId])
+  @@map("leave_requests")
+}
+
+model DailyDiary {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId   String   @map("class_id")
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  teacherId String?  @map("teacher_id")
+  teacher   Teacher? @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  date      String
+  title     String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([classId, date])
+  @@map("daily_diary")
+}
+
+model Timetable {
+  id           String   @id @default(uuid())
+  classId      String   @unique @map("class_id")
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  scheduleData Json     @map("schedule_data")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("timetables")
+}
+
+model ExamSchedule {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId   String   @map("class_id")
+  class     Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  examId    String?  @map("exam_id")
+  exam      Exam?    @relation(fields: [examId], references: [id], onDelete: SetNull)
+  subjectId String?  @map("subject_id")
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  date      String
+  startTime String?  @map("start_time")
+  endTime   String?  @map("end_time")
+  room      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([classId, date])
+  @@map("exam_schedules")
+}
+
+model SubstituteLog {
+  id                  String   @id @default(uuid())
+  schoolId            String   @map("school_id")
+  school              School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  date                String
+  absentTeacherId     String   @map("absent_teacher_id")
+  absentTeacher       Teacher  @relation("AbsentTeacher", fields: [absentTeacherId], references: [id], onDelete: Cascade)
+  substituteTeacherId String   @map("substitute_teacher_id")
+  substituteTeacher   Teacher  @relation("SubstituteTeacher", fields: [substituteTeacherId], references: [id], onDelete: Cascade)
+  period              String?
+  classId             String?  @map("class_id")
+  class               Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  subjectId           String?  @map("subject_id")
+  subject             Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([schoolId, date])
+  @@map("substitute_logs")
+}
+
+model PtmEvent {
+  id        String   @id @default(uuid())
+  schoolId  String   @map("school_id")
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId   String?  @map("class_id")
+  class     Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  title     String
+  date      String
+  time      String?
+  location  String?
+  status    String?  @default("Upcoming")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([schoolId, classId])
+  @@map("ptm_events")
+}
+
+model FcmToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("fcm_tokens")
+}
