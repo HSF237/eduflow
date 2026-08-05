@@ -11,6 +11,27 @@ const where = () => ({});
 const setDoc = async () => {};
 const serverTimestamp = () => new Date().toISOString();
 
+// ── Real-time Cross-Tab / Cross-Window Sync ──────────────────────────────
+const syncChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('eduflow_realtime_sync')
+  : null;
+
+export const broadcastSync = (type, payload) => {
+  if (syncChannel) {
+    try { syncChannel.postMessage({ type, payload }); } catch (e) {}
+  }
+};
+
+if (syncChannel) {
+  syncChannel.onmessage = (event) => {
+    const { type, payload } = event.data || {};
+    if (type === 'SAVE_CLASS' && payload) {
+      saveClassToLocal(payload.school_id, payload, false);
+      window.dispatchEvent(new CustomEvent('eduflow_data_changed', { detail: { type, payload } }));
+    }
+  };
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export const generateCode = (len = 6) =>
   Math.random().toString(36).substring(2, 2 + len).toUpperCase();
@@ -144,7 +165,7 @@ export const getSchoolByCode = async (code) => {
 };
 
 // ── Classes ──────────────────────────────────────────────────────────────────
-const saveClassToLocal = (schoolId, newClass) => {
+const saveClassToLocal = (schoolId, newClass, broadcast = true) => {
   if (schoolId) {
     const local = localStorage.getItem(`classes_${schoolId}`);
     const classes = local ? JSON.parse(local) : [];
@@ -158,6 +179,8 @@ const saveClassToLocal = (schoolId, newClass) => {
   const idxAll = all.findIndex(c => c.id === newClass.id);
   if (idxAll >= 0) all[idxAll] = newClass; else all.push(newClass);
   localStorage.setItem('all_local_classes', JSON.stringify(all));
+
+  if (broadcast) broadcastSync('SAVE_CLASS', newClass);
 };
 
 export const getClasses = async (schoolId) => {

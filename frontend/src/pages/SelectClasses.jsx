@@ -17,6 +17,17 @@ export default function SelectClasses() {
 
   useEffect(() => {
     if (!isLoadingAuth) loadData(authUser);
+
+    const handleSync = () => {
+      if (authUser) loadData(authUser);
+    };
+
+    window.addEventListener('eduflow_data_changed', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('eduflow_data_changed', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [isLoadingAuth, authUser]);
 
   const loadData = async (user) => {
