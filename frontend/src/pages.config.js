@@ -1,97 +1,54 @@
-import Announcements from './pages/Announcements';
-import ClassComparison from './pages/ClassComparison';
-import Diary from './pages/Diary';
-import ExamSchedule from './pages/ExamSchedule';
-import ReportCard from './pages/ReportCard';
-import StudentProgress from './pages/StudentProgress';
-import ApplyLeave from './pages/ApplyLeave';
-import AttendanceAnalytics from './pages/AttendanceAnalytics';
-import AttendanceApproval from './pages/AttendanceApproval';
-import AttendanceHistory from './pages/AttendanceHistory';
-import Communication from './pages/Communication';
-import Dashboard from './pages/Dashboard';
-import EditAttendance from './pages/EditAttendance';
-import EnterMarks from './pages/EnterMarks';
-import Home from './pages/Home';
-import Homework from './pages/Homework';
-import Login from './pages/Login';
-import JoinSchool from './pages/JoinSchool';
-import ManageClasses from './pages/ManageClasses';
-import ManageExams from './pages/ManageExams';
-import ManageStudents from './pages/ManageStudents';
-import ManageSubjects from './pages/ManageSubjects';
-import MarkAttendance from './pages/MarkAttendance';
-import Notifications from './pages/Notifications';
-import ParentDashboard from './pages/ParentDashboard';
-import ParentLogin from './pages/ParentLogin';
-import PrincipalDashboard from './pages/PrincipalDashboard';
-import PrincipalSettings from './pages/PrincipalSettings';
-import PtmSchedule from './pages/PtmSchedule';
-import SubstituteLog from './pages/SubstituteLog';
-import Reports from './pages/Reports';
-import ReviewLeave from './pages/ReviewLeave';
-import Register from './pages/Register';
-import RoleSelection from './pages/RoleSelection';
-import SelectClasses from './pages/SelectClasses';
-import SetupSchool from './pages/SetupSchool';
-import TeacherDashboard from './pages/TeacherDashboard';
-import TeacherManageExams from './pages/TeacherManageExams';
-import Timetable from './pages/Timetable';
-import TeacherSettings from './pages/TeacherSettings';
-import UnapprovedAbsences from './pages/UnapprovedAbsences';
-import ViewMarks from './pages/ViewMarks';
-import ViewStudents from './pages/ViewStudents';
+import { lazy } from 'react';
 import __Layout from './Layout.jsx';
 
-
 export const PAGES = {
-    "Announcements": Announcements,
-    "ApplyLeave": ApplyLeave,
-    "ClassComparison": ClassComparison,
-    "AttendanceAnalytics": AttendanceAnalytics,
-    "AttendanceApproval": AttendanceApproval,
-    "AttendanceHistory": AttendanceHistory,
-    "Communication": Communication,
-    "Dashboard": Dashboard,
-    "Diary": Diary,
-    "EditAttendance": EditAttendance,
-    "EnterMarks": EnterMarks,
-    "ExamSchedule": ExamSchedule,
-    "Home": Home,
-    "Homework": Homework,
-    "Login": Login,
-    "JoinSchool": JoinSchool,
-    "ManageClasses": ManageClasses,
-    "ManageExams": ManageExams,
-    "ManageStudents": ManageStudents,
-    "ManageSubjects": ManageSubjects,
-    "MarkAttendance": MarkAttendance,
-    "Notifications": Notifications,
-    "ParentDashboard": ParentDashboard,
-    "ParentLogin": ParentLogin,
-    "PrincipalDashboard": PrincipalDashboard,
-    "PrincipalSettings": PrincipalSettings,
-    "PtmSchedule": PtmSchedule,
-    "SubstituteLog": SubstituteLog,
-    "Reports": Reports,
-    "Register": Register,
-    "ReportCard": ReportCard,
-    "StudentProgress": StudentProgress,
-    "ReviewLeave": ReviewLeave,
-    "RoleSelection": RoleSelection,
-    "SelectClasses": SelectClasses,
-    "SetupSchool": SetupSchool,
-    "TeacherDashboard": TeacherDashboard,
-    "TeacherManageExams": TeacherManageExams,
-    "TeacherSettings": TeacherSettings,
-    "Timetable": Timetable,
-    "UnapprovedAbsences": UnapprovedAbsences,
-    "ViewMarks": ViewMarks,
-    "ViewStudents": ViewStudents,
-}
+  "Announcements": lazy(() => import('./pages/Announcements')),
+  "ApplyLeave": lazy(() => import('./pages/ApplyLeave')),
+  "ClassComparison": lazy(() => import('./pages/ClassComparison')),
+  "AttendanceAnalytics": lazy(() => import('./pages/AttendanceAnalytics')),
+  "AttendanceApproval": lazy(() => import('./pages/AttendanceApproval')),
+  "AttendanceHistory": lazy(() => import('./pages/AttendanceHistory')),
+  "Communication": lazy(() => import('./pages/Communication')),
+  "Dashboard": lazy(() => import('./pages/Dashboard')),
+  "Diary": lazy(() => import('./pages/Diary')),
+  "EditAttendance": lazy(() => import('./pages/EditAttendance')),
+  "EnterMarks": lazy(() => import('./pages/EnterMarks')),
+  "ExamSchedule": lazy(() => import('./pages/ExamSchedule')),
+  "Home": lazy(() => import('./pages/Home')),
+  "Homework": lazy(() => import('./pages/Homework')),
+  "Login": lazy(() => import('./pages/Login')),
+  "JoinSchool": lazy(() => import('./pages/JoinSchool')),
+  "ManageClasses": lazy(() => import('./pages/ManageClasses')),
+  "ManageExams": lazy(() => import('./pages/ManageExams')),
+  "ManageStudents": lazy(() => import('./pages/ManageStudents')),
+  "ManageSubjects": lazy(() => import('./pages/ManageSubjects')),
+  "MarkAttendance": lazy(() => import('./pages/MarkAttendance')),
+  "Notifications": lazy(() => import('./pages/Notifications')),
+  "ParentDashboard": lazy(() => import('./pages/ParentDashboard')),
+  "ParentLogin": lazy(() => import('./pages/ParentLogin')),
+  "PrincipalDashboard": lazy(() => import('./pages/PrincipalDashboard')),
+  "PrincipalSettings": lazy(() => import('./pages/PrincipalSettings')),
+  "PtmSchedule": lazy(() => import('./pages/PtmSchedule')),
+  "SubstituteLog": lazy(() => import('./pages/SubstituteLog')),
+  "Reports": lazy(() => import('./pages/Reports')),
+  "Register": lazy(() => import('./pages/Register')),
+  "ReportCard": lazy(() => import('./pages/ReportCard')),
+  "StudentProgress": lazy(() => import('./pages/StudentProgress')),
+  "ReviewLeave": lazy(() => import('./pages/ReviewLeave')),
+  "RoleSelection": lazy(() => import('./pages/RoleSelection')),
+  "SelectClasses": lazy(() => import('./pages/SelectClasses')),
+  "SetupSchool": lazy(() => import('./pages/SetupSchool')),
+  "TeacherDashboard": lazy(() => import('./pages/TeacherDashboard')),
+  "TeacherManageExams": lazy(() => import('./pages/TeacherManageExams')),
+  "TeacherSettings": lazy(() => import('./pages/TeacherSettings')),
+  "Timetable": lazy(() => import('./pages/Timetable')),
+  "UnapprovedAbsences": lazy(() => import('./pages/UnapprovedAbsences')),
+  "ViewMarks": lazy(() => import('./pages/ViewMarks')),
+  "ViewStudents": lazy(() => import('./pages/ViewStudents')),
+};
 
 export const pagesConfig = {
-    mainPage: "Home",
-    Pages: PAGES,
-    Layout: __Layout,
+  mainPage: "Home",
+  Pages: PAGES,
+  Layout: __Layout,
 };

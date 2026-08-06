@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 import { useAuth } from '@/hooks/AuthContext';
 import { getTeacherByUserId, getClasses, getStudentsByClass, getMessages, sendMessage } from '@/lib/db';
 import { ArrowLeft, MessageCircle, Send, Loader2 } from 'lucide-react';

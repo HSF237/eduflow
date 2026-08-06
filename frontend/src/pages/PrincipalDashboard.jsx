@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/AuthContext';
 import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, getAttendanceByClass, createClass, createStudent } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import { DashboardSkeleton } from '@/components/ui/SkeletonLoaders';
 import {
   Users, BookOpen, UserCog, Clock, CheckCircle,
   AlertTriangle, GraduationCap, Bell,
@@ -117,11 +118,7 @@ export default function PrincipalDashboard() {
     .sort((a, b) => a.pct - b.pct)
     .slice(0, 5);
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-    </div>
-  );
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">

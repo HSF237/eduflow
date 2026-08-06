@@ -9,8 +9,9 @@ import {
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import { DashboardSkeleton } from '@/components/ui/SkeletonLoaders';
 import {
-  GraduationCap, MessageCircle, Calendar, LogOut, Loader2,
+  GraduationCap, MessageCircle, Calendar, LogOut,
   TrendingUp, CheckCircle2, XCircle, Clock, AlertTriangle,
   BookCopy, CalendarDays, Megaphone, BookOpen, UserPlus, X, KeyRound, Plus, CalendarCheck, Menu,
 } from 'lucide-react';
@@ -306,11 +307,7 @@ export default function ParentDashboard() {
     return new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-    </div>
-  );
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">

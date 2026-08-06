@@ -3,7 +3,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 const AuthContext = createContext();
 
 export const SUPER_ADMIN_EMAIL = 'zerox9861@gmail.com';
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -55,6 +55,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    ['parent_student_id', 'parent_student_name', 'parent_class_id', 'parent_school_id', 'parent_linked_students']
+      .forEach(k => localStorage.removeItem(k));
     setUser(null);
     setIsAuthenticated(false);
     if (shouldRedirect) window.location.assign('/');

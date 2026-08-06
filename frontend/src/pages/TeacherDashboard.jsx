@@ -10,9 +10,10 @@ import {
 } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import { DashboardSkeleton } from '@/components/ui/SkeletonLoaders';
 import {
   GraduationCap, Bell, Settings, LogOut, Users, Clock, BookOpen,
-  AlertTriangle, CheckCircle, Loader2, Cake, KeyRound, Menu
+  AlertTriangle, CheckCircle, Cake, KeyRound, Menu
 } from 'lucide-react';
 
 export default function TeacherDashboard() {
@@ -146,11 +147,7 @@ export default function TeacherDashboard() {
     : '';
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-10 h-10 animate-spin text-green-600" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   // Teacher is in the school but no classes assigned yet
