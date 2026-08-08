@@ -16,21 +16,22 @@ export default function Login() {
   const [error, setError] = useState('');
 
   const routeAfterLogin = (user) => {
-    if (user.role === 'ADMIN' || user.role === 'PRINCIPAL') {
+    const userRole = (user.role || '').toUpperCase();
+    if (userRole === 'ADMIN' || userRole === 'PRINCIPAL') {
       navigate(createPageUrl('PrincipalDashboard'));
       return;
     }
-    if (user.role === 'TEACHER') {
+    if (userRole === 'TEACHER') {
       navigate(createPageUrl('TeacherDashboard'));
       return;
     }
-    if (user.role === 'PARENT') {
+    if (userRole === 'PARENT') {
       navigate(createPageUrl('ParentDashboard'));
       return;
     }
 
     if (role === 'principal') { navigate(createPageUrl('SetupSchool')); return; }
-    if (role === 'teacher')   { navigate(createPageUrl('JoinSchool'));  return; }
+    if (role === 'teacher')   { navigate(createPageUrl('TeacherDashboard')); return; }
     navigate(createPageUrl('RoleSelection'));
   };
 

@@ -5,10 +5,10 @@ import { createPageUrl } from '@/utils';
 import {
   getTeacherByUserId, getSchoolByPrincipal,
   getLeaveRequests, updateLeaveStatus,
-  getStudents, getClasses, getFcmTokenForStudent,
+  getStudents, getClasses,
 } from '@/lib/db';
-import { sendPush } from '@/lib/fcm';
-import { ArrowLeft, Loader2, CheckCircle, XCircle, Clock, Calendar } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle, XCircle, Calendar } from 'lucide-react';
+import AppLayout from '@/components/AppLayout';
 
 export default function ReviewLeave() {
   const navigate = useNavigate();
@@ -31,72 +31,55 @@ export default function ReviewLeave() {
     try {
       if (!user) { navigate('/login'); return; }
 
-      // Detect role
-      const [school, teacher] = await Promise.all([
-        getSchoolByPrincipal(user.uid),
-        getTeacherByUserId(user.uid),
-      ]);
-
-      let schoolId, leaveData;
+      let sid = null;
+      const school = await getSchoolByPrincipal(user.uid);
       if (school) {
+        sid = school.id;
         setBackTo('PrincipalDashboard');
-        schoolId = school.id;
-        leaveData = await getLeaveRequests(schoolId);
-      } else if (teacher) {
-        setBackTo('TeacherDashboard');
-        schoolId = teacher.school_id;
-        // Get leaves only for assigned classes
-        const allLeaves = await getLeaveRequests(schoolId);
-        const allClasses = await getClasses(schoolId);
-        const myClassIds = allClasses.filter(c => c.teacher_id === teacher.id).map(c => c.id);
-        leaveData = allLeaves.filter(l => myClassIds.includes(l.class_id));
       } else {
-        navigate('/');
-        return;
+        const teacher = await getTeacherByUserId(user.uid);
+        if (teacher) sid = teacher.school_id;
       }
 
-      const [studs, cls] = await Promise.all([
-        getStudents(schoolId),
-        getClasses(schoolId),
-      ]);
-      setLeaves(leaveData);
-      setStudents(studs);
-      setClasses(cls);
+      if (sid) {
+        const [clsList, stuList, leaveList] = await Promise.all([
+          getClasses(sid),
+          getStudents(sid),
+          getLeaveRequests(sid),
+        ]);
+        setClasses(clsList);
+        setStudents(stuList);
+        setLeaves(leaveList);
+      }
     } catch (err) {
-      console.error('ReviewLeave error:', err);
+      console.error('Error loading ReviewLeave:', err);
     }
     setLoading(false);
   };
 
-  const handleReview = async (status) => {
-    if (!selectedApp) return;
-    setSubmitting(true);
-    try {
-      await updateLeaveStatus(selectedApp.id, status);
-      setLeaves(prev => prev.map(l => l.id === selectedApp.id ? { ...l, status } : l));
-      // Push notification to parent
-      const studentName = selectedApp.student_name || getStudentName(selectedApp.student_id);
-      getFcmTokenForStudent(selectedApp.student_id).then(token => {
-        if (token) sendPush(
-          [token],
-          status === 'approved' ? '✅ Leave Approved' : '❌ Leave Rejected',
-          `${studentName}'s leave (${selectedApp.from_date} – ${selectedApp.to_date}) has been ${status}`
-        );
-      });
-      setSelectedApp(null);
-      setRemarks('');
-    } catch (err) {
-      console.error('Review error:', err);
-    }
-    setSubmitting(false);
+  const getStudentName = (stuId) => {
+    const s = students.find(st => st.id === stuId);
+    return s ? s.name : 'Unknown Student';
   };
 
   const getClassName = (classId) => {
-    const cls = classes.find(c => c.id === classId);
-    return cls ? `${cls.name}${cls.section ? ' - ' + cls.section : ''}` : '—';
+    const c = classes.find(cl => cl.id === classId);
+    return c ? `${c.name}${c.section ? ' - ' + c.section : ''}` : '';
   };
 
-  const getStudentName = (studentId) => students.find(s => s.id === studentId)?.name || '—';
+  const handleAction = async (status) => {
+    if (!selectedApp) return;
+    setSubmitting(true);
+    try {
+      await updateLeaveStatus(selectedApp.id, status, remarks);
+      setLeaves(prev => prev.map(l => l.id === selectedApp.id ? { ...l, status, remarks } : l));
+      setSelectedApp(null);
+      setRemarks('');
+    } catch (err) {
+      console.error('Error updating leave status:', err);
+    }
+    setSubmitting(false);
+  };
 
   const statusColor = (s) =>
     s === 'approved' ? 'bg-green-100 text-green-800' :
@@ -113,103 +96,102 @@ export default function ReviewLeave() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-4">
-          <button onClick={() => navigate(createPageUrl(backTo))}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Back
-          </button>
-          <h1 className="font-bold text-lg text-slate-800">Review Leave Applications</h1>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-6 py-6">
-        {/* Tabs */}
-        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 mb-6 w-fit">
-          {[['pending', `Pending (${pending.length})`], ['reviewed', `Reviewed (${reviewed.length})`]].map(([key, label]) => (
-            <button key={key} onClick={() => setActiveTab(key)}
-              className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === key ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-50'
-              }`}>
-              {label}
+    <AppLayout title="Review Leave Applications">
+      <div className="min-h-screen bg-slate-50">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+          <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-4">
+            <button onClick={() => navigate(createPageUrl(backTo))}
+              className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Back
             </button>
-          ))}
-        </div>
-
-        {shown.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400">
-            <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-            <p>{activeTab === 'pending' ? 'No pending leave applications' : 'No reviewed applications yet'}</p>
+            <h1 className="font-bold text-lg text-slate-800">Leave Applications</h1>
           </div>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {shown.map(app => (
-              <div key={app.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <p className="font-semibold text-slate-800">{app.student_name || getStudentName(app.student_id)}</p>
-                    <p className="text-xs text-slate-500">{getClassName(app.class_id)}</p>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold capitalize ${statusColor(app.status || 'pending')}`}>
-                    {app.status || 'Pending'}
-                  </span>
-                </div>
+        </header>
 
-                <div className="space-y-1.5 text-sm text-slate-600 mb-3">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{app.from_date} — {app.to_date}</span>
-                  </div>
-                  {app.reason && <p className="text-slate-700"><span className="font-medium">Reason:</span> {app.reason}</p>}
-                </div>
+        <main className="max-w-5xl mx-auto px-6 py-6">
+          <div className="flex gap-2 mb-6 border-b border-slate-200">
+            <button onClick={() => setActiveTab('pending')}
+              className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'pending' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              Pending ({pending.length})
+            </button>
+            <button onClick={() => setActiveTab('reviewed')}
+              className={`pb-3 px-4 text-sm font-semibold border-b-2 transition-colors ${activeTab === 'reviewed' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              Reviewed ({reviewed.length})
+            </button>
+          </div>
 
-                {(!app.status || app.status === 'pending') && (
-                  <button onClick={() => setSelectedApp(app)}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors flex items-center justify-center gap-1">
-                    <CheckCircle className="w-4 h-4" /> Review
-                  </button>
-                )}
+          {shown.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-xl border border-slate-200 shadow-sm text-slate-400 text-sm">
+              <Calendar className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+              No {activeTab} leave applications
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {shown.map(app => (
+                <div key={app.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-slate-800 text-base">{app.student_name || getStudentName(app.student_id)}</h3>
+                      <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full capitalize ${statusColor(app.status || 'pending')}`}>
+                        {app.status || 'pending'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5" />
+                      {app.from_date === app.to_date ? app.from_date : `${app.from_date} to ${app.to_date}`}
+                    </p>
+                    {app.reason && (
+                      <p className="text-xs text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 mt-2">
+                        "{app.reason}"
+                      </p>
+                    )}
+                  </div>
+
+                  {(!app.status || app.status === 'pending') && (
+                    <button onClick={() => setSelectedApp(app)}
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold transition-colors shrink-0">
+                      Review Application
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </main>
+
+        {selectedApp && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+              <h3 className="font-bold text-slate-800 text-base">Review Leave: {selectedApp.student_name || getStudentName(selectedApp.student_id)}</h3>
+              <p className="text-xs text-slate-500">Dates: {selectedApp.from_date} to {selectedApp.to_date}</p>
+              
+              <div>
+                <label className="text-xs font-semibold text-slate-600 mb-1 block">Remarks / Reason (Optional)</label>
+                <textarea rows={3} value={remarks} onChange={e => setRemarks(e.target.value)}
+                  placeholder="e.g. Approved for medical leave..."
+                  className="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
               </div>
-            ))}
+
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => handleAction('rejected')} disabled={submitting}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60">
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                  Reject
+                </button>
+                <button onClick={() => handleAction('approved')} disabled={submitting}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60">
+                  {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                  Approve
+                </button>
+              </div>
+              <button onClick={() => { setSelectedApp(null); setRemarks(''); }}
+                className="w-full text-slate-500 hover:text-slate-700 text-xs py-1 transition-colors">
+                Cancel
+              </button>
+            </div>
           </div>
         )}
-      </main>
-
-      {/* Review modal */}
-      {selectedApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl p-6">
-            <h3 className="font-bold text-slate-900 text-lg mb-4">Review Leave Application</h3>
-            <div className="bg-slate-50 rounded-xl p-4 space-y-1.5 text-sm mb-4">
-              <p><span className="font-medium">Student:</span> {selectedApp.student_name || getStudentName(selectedApp.student_id)}</p>
-              <p><span className="font-medium">Class:</span> {getClassName(selectedApp.class_id)}</p>
-              <p><span className="font-medium">Duration:</span> {selectedApp.from_date} — {selectedApp.to_date}</p>
-              {selectedApp.reason && <p><span className="font-medium">Reason:</span> {selectedApp.reason}</p>}
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Remarks (optional)</label>
-              <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={3}
-                placeholder="Add remarks..."
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none" />
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => handleReview('approved')} disabled={submitting}
-                className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />} Approve
-              </button>
-              <button onClick={() => handleReview('rejected')} disabled={submitting}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />} Reject
-              </button>
-            </div>
-            <button onClick={() => { setSelectedApp(null); setRemarks(''); }}
-              className="w-full mt-2 text-slate-500 hover:text-slate-700 text-sm py-1.5 transition-colors">
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </AppLayout>
   );
 }

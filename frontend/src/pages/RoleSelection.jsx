@@ -19,13 +19,27 @@ export default function RoleSelection() {
       navigate(createPageUrl('ParentDashboard'), { replace: true });
       return;
     }
-    // Firebase user already logged in — figure out their role
     if (user) {
+      const userRole = (user.role || '').toUpperCase();
+      if (userRole === 'ADMIN' || userRole === 'PRINCIPAL') {
+        navigate(createPageUrl('PrincipalDashboard'), { replace: true });
+        return;
+      }
+      if (userRole === 'TEACHER') {
+        navigate(createPageUrl('TeacherDashboard'), { replace: true });
+        return;
+      }
+      if (userRole === 'PARENT') {
+        navigate(createPageUrl('ParentDashboard'), { replace: true });
+        return;
+      }
+
       (async () => {
         try {
-          const school = await getSchoolByPrincipal(user.uid);
+          const userId = user.id || user.uid;
+          const school = await getSchoolByPrincipal(userId);
           if (school) { navigate(createPageUrl('PrincipalDashboard'), { replace: true }); return; }
-          const teacher = await getTeacherByUserId(user.uid);
+          const teacher = await getTeacherByUserId(userId);
           if (teacher) { navigate(createPageUrl('TeacherDashboard'), { replace: true }); return; }
         } catch (e) {
           console.warn('Role lookup error:', e);

@@ -23,7 +23,8 @@ export default function TeacherSettings() {
   const loadData = async (user) => {
     try {
       if (!user) { navigate('/login?role=teacher'); return; }
-      const teacherData = await getTeacherByUserId(user.uid);
+      const userId = user.id || user.uid;
+      const teacherData = await getTeacherByUserId(userId);
       if (!teacherData) { navigate(createPageUrl('JoinSchool')); return; }
       setTeacher(teacherData);
       setSchool(teacherData.schools || null);

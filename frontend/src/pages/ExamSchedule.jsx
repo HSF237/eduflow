@@ -31,7 +31,8 @@ export default function ExamSchedule() {
   const init = async (user) => {
     if (!user) { navigate('/login?role=teacher'); return; }
     try {
-      const teacher = await getTeacherByUserId(user.uid);
+      const userId = user.id || user.uid;
+      const teacher = await getTeacherByUserId(userId);
       if (!teacher) { navigate(createPageUrl('JoinSchool')); return; }
       const all = await getClasses(teacher.school_id);
       const mine = all.filter(c => c.teacher_id === teacher.id || (teacher.assigned_classes || []).includes(c.id));

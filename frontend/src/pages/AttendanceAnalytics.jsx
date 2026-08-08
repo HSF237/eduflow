@@ -36,7 +36,8 @@ export default function AttendanceAnalytics() {
   const loadInitial = async (user) => {
     try {
       if (!user) { navigate(createPageUrl('Login')); return; }
-      const teacherData = await getTeacherByUserId(user.uid);
+      const userId = user.id || user.uid;
+      const teacherData = await getTeacherByUserId(userId);
       if (!teacherData) { navigate(createPageUrl('JoinSchool')); return; }
       setTeacher(teacherData);
       const allClasses = await getClasses(teacherData.school_id);

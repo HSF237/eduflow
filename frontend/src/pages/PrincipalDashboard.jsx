@@ -41,7 +41,8 @@ export default function PrincipalDashboard() {
       if (!user) { navigate('/login?role=principal'); return; }
       setUser(user);
 
-      const schoolData = await getSchoolByPrincipal(user.uid);
+      const userId = user.id || user.uid;
+      const schoolData = await getSchoolByPrincipal(userId);
       if (!schoolData) { navigate(createPageUrl('SetupSchool')); return; }
       setSchool(schoolData);
 

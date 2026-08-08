@@ -4,6 +4,8 @@ import { createPageUrl } from '@/utils';
 import { getClassById, getStudentsByClass, getLeavesByClass, createLeaveRequest } from '@/lib/db';
 import { ArrowLeft, Loader2, Send, Calendar, Clock, CheckCircle, XCircle } from 'lucide-react';
 
+import AppLayout from '@/components/AppLayout';
+
 const statusColor = (s) => {
   if (s === 'approved') return 'bg-green-100 text-green-800';
   if (s === 'rejected') return 'bg-red-100 text-red-800';
@@ -99,114 +101,110 @@ export default function ApplyLeave() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-4">
-          <button onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Back
-          </button>
-          <h1 className="font-bold text-lg text-slate-800">Apply for Leave</h1>
-        </div>
-      </header>
+    <AppLayout title="Apply for Leave">
+      <div className="min-h-screen bg-slate-50">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+          <div className="max-w-5xl mx-auto px-6 h-14 flex items-center gap-4">
+            <button onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <h1 className="font-bold text-lg text-slate-800">Apply for Leave</h1>
+          </div>
+        </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Form */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <Calendar className="w-5 h-5 text-purple-600" />
-              <h2 className="font-semibold text-slate-800">New Application</h2>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
-              {success && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{success}</p>}
+        <main className="max-w-5xl mx-auto px-6 py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Form */}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <h2 className="font-bold text-slate-800 text-base mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-purple-600" /> Leave Application Form
+              </h2>
 
-              {parentStudentId ? (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Student</label>
-                  <div className="w-full border border-slate-200 bg-slate-50 rounded-lg px-3 py-2.5 text-sm text-slate-700 font-medium">
-                    {students.find(s => s.id === parentStudentId)?.name || localStorage.getItem('parent_student_name') || 'Your child'}
+              {error && <div className="mb-4 text-xs bg-red-50 text-red-600 p-3 rounded-lg border border-red-200">{error}</div>}
+              {success && <div className="mb-4 text-xs bg-green-50 text-green-600 p-3 rounded-lg border border-green-200">{success}</div>}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {students.length > 1 && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block">Select Child *</label>
+                    <select required value={form.student_id} onChange={e => setForm(f => ({ ...f, student_id: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400">
+                      {students.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} (Roll: {s.roll_number || 'N/A'})</option>
+                      ))}
+                    </select>
                   </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block">From Date *</label>
+                    <input type="date" required value={form.from_date}
+                      onChange={e => setForm(f => ({ ...f, from_date: e.target.value }))}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block">To Date *</label>
+                    <input type="date" required value={form.to_date}
+                      onChange={e => setForm(f => ({ ...f, to_date: e.target.value }))}
+                      min={form.from_date}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block">Reason for Leave *</label>
+                  <textarea required rows={4} value={form.reason}
+                    onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                    placeholder="Provide detailed reason for absence..."
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
+                </div>
+
+                <button type="submit" disabled={submitting}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60">
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {submitting ? 'Submitting...' : 'Submit Application'}
+                </button>
+              </form>
+            </div>
+
+            {/* History */}
+            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <h2 className="font-bold text-slate-800 text-base mb-4">Application History</h2>
+              {myLeaves.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  No leave applications submitted yet
                 </div>
               ) : (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Student</label>
-                  <select value={form.student_id} onChange={e => setForm({ ...form, student_id: e.target.value })} required
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-400">
-                    <option value="">Select student</option>
-                    {students.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} (Roll: {s.roll_number})</option>
-                    ))}
-                  </select>
+                <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+                  {myLeaves.map(app => (
+                    <div key={app.id} className="border border-slate-100 bg-slate-50 rounded-xl p-3.5 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-800 text-sm">
+                          {app.student_name || 'Student'}
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1 capitalize ${statusColor(app.status)}`}>
+                          {statusIcon(app.status)} {app.status || 'pending'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>
+                          {app.from_date === app.to_date
+                            ? app.from_date
+                            : `${app.from_date} to ${app.to_date}`}
+                        </span>
+                      </div>
+                      {app.reason && <p className="text-xs text-slate-600 mt-1">{app.reason}</p>}
+                    </div>
+                  ))}
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">From Date</label>
-                  <input type="date" value={form.from_date} required
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={e => setForm({ ...form, from_date: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">To Date</label>
-                  <input type="date" value={form.to_date} required
-                    min={form.from_date || new Date().toISOString().split('T')[0]}
-                    onChange={e => setForm({ ...form, to_date: e.target.value })}
-                    className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Reason</label>
-                <textarea value={form.reason} required rows={4}
-                  placeholder="Please provide a reason for the leave..."
-                  onChange={e => setForm({ ...form, reason: e.target.value })}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none" />
-              </div>
-
-              <button type="submit" disabled={submitting}
-                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Submit Application
-              </button>
-            </form>
-          </div>
-
-          {/* History */}
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <Clock className="w-5 h-5 text-slate-500" />
-              <h2 className="font-semibold text-slate-800">Leave History</h2>
             </div>
-            {myLeaves.length === 0 ? (
-              <div className="text-center py-10 text-slate-400">
-                <Calendar className="w-10 h-10 mx-auto mb-3 text-slate-300" />
-                <p>No leave applications yet</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto">
-                {myLeaves.map(app => (
-                  <div key={app.id} className="p-4 border border-slate-200 rounded-lg">
-                    <div className="flex items-start justify-between mb-1.5">
-                      <div>
-                        <p className="font-medium text-slate-800 text-sm">{app.student_name}</p>
-                        <p className="text-xs text-slate-500">{app.from_date} — {app.to_date}</p>
-                      </div>
-                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold capitalize ${statusColor(app.status || 'pending')}`}>
-                        {statusIcon(app.status || 'pending')} {app.status || 'Pending'}
-                      </span>
-                    </div>
-                    {app.reason && <p className="text-xs text-slate-600 mt-1">{app.reason}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </AppLayout>
   );
 }

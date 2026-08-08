@@ -11,6 +11,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import SuperAdminBar from '@/components/SuperAdminBar';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { DashboardSkeleton } from '@/components/ui/SkeletonLoaders';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -34,7 +35,9 @@ const AuthenticatedApp = () => {
                        currentPath === '/register' || 
                        currentPath === '/' ||
                        currentPath === '/roleselection' ||
-                       currentPath === '/parentlogin';
+                       currentPath === '/parentlogin' ||
+                       currentPath.startsWith('/jointeacher') ||
+                       currentPath.startsWith('/join-teacher');
 
   if (authError && !isPublicPage) {
     if (authError.type === 'user_not_registered') {
@@ -90,6 +93,7 @@ function App() {
         <Router>
           <NavigationTracker />
           <AuthenticatedApp />
+          <PWAInstallPrompt />
         </Router>
         <Toaster />
       </QueryClientProvider>

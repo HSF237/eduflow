@@ -175,6 +175,11 @@ export default function DashboardSidebar({
               primary: true,
             },
             {
+              label: 'Manage Teachers',
+              path: createPageUrl('ManageTeachers'),
+              icon: UserCog,
+            },
+            {
               label: 'Manage Students',
               path: createPageUrl('ManageStudents'),
               icon: Users,
@@ -349,9 +354,9 @@ export default function DashboardSidebar({
   };
 
   const navContent = (
-    <div className={`h-full flex flex-col ${themeColors.bg} text-white transition-all duration-300`}>
+    <div className={`h-screen max-h-screen flex flex-col ${themeColors.bg} text-white transition-all duration-300 select-none overflow-hidden`}>
       {/* Top Brand / Header */}
-      <div className={`p-3.5 border-b border-white/10 flex ${isCollapsed ? 'flex-col items-center gap-2.5' : 'items-center justify-between'}`}>
+      <div className={`p-3.5 border-b border-white/10 flex shrink-0 ${isCollapsed ? 'flex-col items-center gap-2.5' : 'items-center justify-between'}`}>
         <div className="flex items-center gap-3 min-w-0">
           <div
             onClick={() => isCollapsed && setIsCollapsed(false)}
@@ -395,7 +400,7 @@ export default function DashboardSidebar({
       </div>
 
       {/* Main Dashboard Link */}
-      <div className="p-3">
+      <div className="p-3 shrink-0">
         <button
           onClick={() => {
             navigate(dashboardHomePath);
@@ -412,7 +417,7 @@ export default function DashboardSidebar({
       </div>
 
       {/* Nav Sections List */}
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 scrollbar-thin scrollbar-thumb-white/10">
+      <div className="flex-1 overflow-y-auto overscroll-contain px-3 py-2 space-y-4 scrollbar-thin scrollbar-thumb-white/10">
         {getNavSections().map((section, idx) => (
           <div key={idx} className="space-y-1">
             {!isCollapsed && (
@@ -432,7 +437,11 @@ export default function DashboardSidebar({
                       navigate(item.path);
                       onClose();
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all mb-2 ${themeColors.primaryBtn}`}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold text-sm transition-all mb-2 ${
+                      isActive
+                        ? themeColors.primaryBtn
+                        : `${themeColors.text} ${themeColors.hover} border border-white/10`
+                    }`}
                     title={item.label}
                   >
                     <Icon className="w-5 h-5 shrink-0" />
@@ -490,8 +499,8 @@ export default function DashboardSidebar({
       </div>
 
       {/* User Info Footer */}
-      {!isCollapsed && (
-        <div className="p-3 border-t border-white/10 bg-black/20 flex items-center justify-between gap-2">
+      <div className="p-3 border-t border-white/10 bg-black/20 flex items-center justify-between gap-2 shrink-0">
+        {!isCollapsed && (
           <div className="min-w-0">
             <p className="text-xs font-bold text-white truncate">
               {teacherName || studentName || 'EduFlow User'}
@@ -500,15 +509,15 @@ export default function DashboardSidebar({
               {schoolName || `${role.toUpperCase()} Account`}
             </p>
           </div>
-          <button
-            onClick={onLogout}
-            className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/70 hover:text-red-300 transition-colors"
-            title="Logout"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+        )}
+        <button
+          onClick={onLogout}
+          className="p-1.5 rounded-lg hover:bg-red-500/20 text-white/70 hover:text-red-300 transition-colors ml-auto"
+          title="Logout"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 

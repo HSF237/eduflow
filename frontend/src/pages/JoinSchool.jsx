@@ -28,7 +28,8 @@ export default function JoinSchool() {
         navigate('/login?role=teacher');
         return;
       }
-      const teacher = await getTeacherByUserId(user.uid);
+      const userId = user.id || user.uid;
+      const teacher = await getTeacherByUserId(userId);
       if (teacher?.school_id && teacher?.schools?.name) {
         setExistingTeacher(teacher);
         setExistingSchoolName(teacher.schools.name);

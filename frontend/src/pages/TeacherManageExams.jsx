@@ -64,7 +64,8 @@ export default function TeacherManageExams() {
     try {
       if (!user) { navigate(createPageUrl('Login')); return; }
 
-      const teacherData = await getTeacherByUserId(user.uid);
+      const userId = user.id || user.uid;
+      const teacherData = await getTeacherByUserId(userId);
       if (!teacherData) { navigate(createPageUrl('JoinSchool')); return; }
 
       setTeacher(teacherData);

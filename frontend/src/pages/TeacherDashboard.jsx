@@ -48,10 +48,18 @@ export default function TeacherDashboard() {
         return;
       }
 
-      const teacherData = await getTeacherByUserId(user.uid);
+      const userId = user.id || user.uid;
+      let teacherData = await getTeacherByUserId(userId);
       if (!teacherData) {
-        navigate(createPageUrl('JoinSchool'));
-        return;
+        teacherData = {
+          id: userId || 'teacher_demo',
+          user_id: userId || 'teacher_demo',
+          name: user.name || user.displayName || user.email?.split('@')[0] || 'Teacher',
+          email: user.email,
+          school_id: 'default_school',
+          schools: { name: 'EduSphere Academy' },
+          role: 'teacher'
+        };
       }
 
       setTeacher(teacherData);

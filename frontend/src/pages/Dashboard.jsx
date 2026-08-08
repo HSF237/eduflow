@@ -16,13 +16,25 @@ export default function Dashboard() {
   const redirect = async (user) => {
     if (!user) { navigate(createPageUrl('RoleSelection')); return; }
 
-    const parentClassId = localStorage.getItem('parent_class_id');
-    if (parentClassId) { navigate(createPageUrl('ParentDashboard')); return; }
+    const userRole = (user.role || '').toUpperCase();
+    if (userRole === 'ADMIN' || userRole === 'PRINCIPAL') {
+      navigate(createPageUrl('PrincipalDashboard'));
+      return;
+    }
+    if (userRole === 'TEACHER') {
+      navigate(createPageUrl('TeacherDashboard'));
+      return;
+    }
+    if (userRole === 'PARENT' || localStorage.getItem('parent_class_id')) {
+      navigate(createPageUrl('ParentDashboard'));
+      return;
+    }
 
+    const userId = user.id || user.uid;
     try {
       const [school, teacher] = await Promise.all([
-        getSchoolByPrincipal(user.uid),
-        getTeacherByUserId(user.uid),
+        getSchoolByPrincipal(userId),
+        getTeacherByUserId(userId),
       ]);
       if (school) { navigate(createPageUrl('PrincipalDashboard')); return; }
       if (teacher) { navigate(createPageUrl('TeacherDashboard')); return; }

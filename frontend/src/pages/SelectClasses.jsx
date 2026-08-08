@@ -34,16 +34,17 @@ export default function SelectClasses() {
     try {
       if (!user) { navigate('/login?role=teacher'); return; }
 
-      let teacherData = await getTeacherByUserId(user.uid);
+      const userId = user.id || user.uid;
+      let teacherData = await getTeacherByUserId(userId);
 
       // Fallback if teacher record is not yet synced in local memory
       if (!teacherData) {
         teacherData = {
-          id: `teacher_${user.uid}`,
-          user_id: user.uid,
+          id: `teacher_${userId}`,
+          user_id: userId,
           name: user.displayName || user.name || user.email || 'Teacher',
           email: user.email || '',
-          school_id: `school_${user.uid}`,
+          school_id: `school_${userId}`,
         };
       }
       setTeacher(teacherData);
