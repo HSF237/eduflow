@@ -1,3 +1,5 @@
+import { pb } from './pocketbase';
+
 // Firestore stubs for self-hosted fallback mode
 const collection = () => ({});
 const doc = () => ({});
@@ -85,6 +87,11 @@ export const getSchoolByPrincipal = async (userIdInput) => {
   }
 
   if (userId) {
+    try {
+      const pbSchool = await pb.collection('schools').getFirstListItem(`principal_id="${userId}"`);
+      if (pbSchool) return pbSchool;
+    } catch (e) {}
+
     try {
       const q = query(collection(db, 'schools'), where('principal_id', '==', userId));
       const s = await getDocs(q);
@@ -480,6 +487,11 @@ export const getTeacherByUserId = async (userIdInput) => {
 
   if (userId) {
     try {
+      const pbTeacher = await pb.collection('teachers').getFirstListItem(`user_id="${userId}"`);
+      if (pbTeacher) return pbTeacher;
+    } catch (e) {}
+
+    try {
       const q = query(collection(db, 'teachers'), where('user_id', '==', userId));
       const s = await getDocs(q);
       if (!s.empty) {
@@ -555,6 +567,21 @@ export const updateTeacher = async (id, data) => {
 export const upsertTeacher = async (data) => {
   let teacher = null;
   try {
+    const existing = await pb.collection('teachers').getFirstListItem(`user_id="${data.user_id}"`).catch(() => null);
+    if (existing) {
+      teacher = await pb.collection('teachers').update(existing.id, data);
+    } else {
+      teacher = await pb.collection('teachers').create(data);
+    }
+    if (teacher && data.user_id) {
+      localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
+      return teacher;
+    }
+  } catch (pbErr) {
+    console.warn('PocketBase upsertTeacher failed, using fallback:', pbErr);
+  }
+
+  try {
     const q = query(collection(db, 'teachers'), where('user_id', '==', data.user_id));
     const s = await getDocs(q);
     if (s.empty) {
@@ -567,7 +594,7 @@ export const upsertTeacher = async (data) => {
       return teacher;
     }
   } catch (err) {
-    console.warn('upsertTeacher Firestore write failed, returning local object:', err);
+    console.warn('upsertTeacher write failed, returning local object:', err);
     const teacher = { id: 'teacher_' + data.user_id, ...data };
     if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
     return teacher;
@@ -1148,5 +1175,33 @@ export const deleteSubject = async (id) => {
   const globalKey = 'all_local_subjects';
   const all = JSON.parse(localStorage.getItem(globalKey) || '[]');
   localStorage.setItem(globalKey, JSON.stringify(all.filter(s => s.id !== id)));
+};
+
+export const resetAllLocalData = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('school_') ||
+        key.startsWith('teachers_') ||
+        key.startsWith('teacher_') ||
+        key.startsWith('classes_') ||
+        key.startsWith('students_') ||
+        key.startsWith('attendance_') ||
+        key.startsWith('announcements_') ||
+        key.startsWith('exams_') ||
+        key.startsWith('subjects_') ||
+        key.startsWith('all_local_') ||
+        key === 'current_school' ||
+        key === 'user' ||
+        key === 'token' ||
+        key === 'refreshToken'
+      )) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  }
 };
 

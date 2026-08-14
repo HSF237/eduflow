@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "pb": ".\\pocketbase\\pocketbase.exe serve --dir=.\\pb_data --migrationsDir=.\\pb_migrations",
     "dev": "nodemon server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
