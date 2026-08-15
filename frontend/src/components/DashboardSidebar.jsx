@@ -363,14 +363,14 @@ export default function DashboardSidebar({
             className={`w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center shrink-0 shadow-inner ${
               isCollapsed ? 'cursor-pointer hover:bg-white/20 transition-all' : ''
             }`}
-            title={isCollapsed ? "Click to expand sidebar" : "EduFlow"}
+            title={isCollapsed ? "Click to expand sidebar" : "EduSphere"}
           >
             <Sparkles className="w-5 h-5 text-amber-400" />
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
               <h2 className="font-extrabold text-base leading-tight tracking-tight text-white truncate">
-                EduFlow
+                EduSphere
               </h2>
               <p className="text-[11px] font-medium text-white/60 capitalize truncate">
                 {role} Portal
@@ -503,7 +503,7 @@ export default function DashboardSidebar({
         {!isCollapsed && (
           <div className="min-w-0">
             <p className="text-xs font-bold text-white truncate">
-              {teacherName || studentName || 'EduFlow User'}
+              {teacherName || studentName || 'EduSphere User'}
             </p>
             <p className="text-[10px] text-white/60 truncate">
               {schoolName || `${role.toUpperCase()} Account`}

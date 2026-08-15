@@ -137,7 +137,7 @@ export default function JoinTeacher() {
           </h2>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-xs font-semibold text-blue-400">
             <Building2 className="w-3.5 h-3.5" />
-            <span>{school?.name || 'EduFlow School'}</span>
+            <span>{school?.name || 'EduSphere Academy'}</span>
           </div>
         </div>
 

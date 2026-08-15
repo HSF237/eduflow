@@ -97,7 +97,7 @@ export default function Login() {
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-slate-900">Sign In</h2>
-            <p className="text-slate-500 text-sm mt-1">Access your self-hosted EduFlow portal</p>
+            <p className="text-slate-500 text-sm mt-1">Access your self-hosted EduSphere portal</p>
           </div>
 
           {error && (

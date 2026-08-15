@@ -94,7 +94,7 @@ export default function Register() {
               {roleParam === 'principal' ? 'Principal Registration' : 'Create Account'}
             </h2>
             <p className="text-slate-500 text-sm">
-              {roleParam === 'principal' ? 'Register as Principal to Setup your School' : 'Join the EduFlow Self-Hosted Network'}
+              {roleParam === 'principal' ? 'Register as Principal to Setup your School' : 'Join the EduSphere Network'}
             </p>
           </div>
 

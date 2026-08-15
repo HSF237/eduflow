@@ -90,13 +90,13 @@ export default function PWAInstallPrompt() {
 
           <div className="flex-1 pr-4">
             <h3 className="font-bold text-base text-white flex items-center gap-2">
-              Install EduFlow App
+              Install EduSphere App
               <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 text-[10px] uppercase font-extrabold rounded-full tracking-wider border border-indigo-500/30">
                 Recommended
               </span>
             </h3>
             <p className="text-slate-300 text-xs mt-1 leading-relaxed">
-              Add EduFlow to your Home Screen for faster access, instant updates, and full app capabilities!
+              Add EduSphere to your Home Screen for faster access, instant updates, and full app capabilities!
             </p>
 
             {isIOS ? (

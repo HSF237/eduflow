@@ -66,7 +66,7 @@ export default function AppLayout({ children, title }) {
             </button>
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span className="font-extrabold text-sm tracking-tight">{title || 'EduFlow'}</span>
+              <span className="font-extrabold text-sm tracking-tight">{title || 'EduSphere'}</span>
             </div>
           </div>
         </header>
