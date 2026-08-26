@@ -9,6 +9,55 @@ import { pagesConfig } from './pages.config';
  * @param {Object} params - Optional URL parameters.
  * @returns {string} The generated URL.
  */
+export const PAGE_ROUTES = {
+  PrincipalDashboard: '/principal/dashboard',
+  ManageClasses: '/principal/manage-classes',
+  ManageTeachers: '/principal/manage-teachers',
+  ManageSubjects: '/principal/manage-subjects',
+  SubstituteLog: '/principal/substitute-log',
+  Reports: '/principal/reports',
+  ClassComparison: '/principal/class-comparison',
+  PrincipalSettings: '/principal/settings',
+  
+  TeacherDashboard: '/teacher/dashboard',
+  MarkAttendance: '/teacher/mark-attendance',
+  ReviewLeave: '/teacher/review-leave',
+  ViewStudents: '/teacher/view-students',
+  AttendanceHistory: '/teacher/attendance-history',
+  AttendanceAnalytics: '/teacher/attendance-analytics',
+  EnterMarks: '/teacher/enter-marks',
+  ExamSchedule: '/teacher/exam-schedule',
+  Homework: '/teacher/homework',
+  Timetable: '/teacher/timetable',
+  Announcements: '/teacher/announcements',
+  Diary: '/teacher/diary',
+  PtmSchedule: '/teacher/ptm-schedule',
+  TeacherManageExams: '/teacher/manage-exams',
+  TeacherSettings: '/teacher/settings',
+  EditAttendance: '/teacher/edit-attendance',
+  
+  ParentDashboard: '/parent/dashboard',
+  ParentLogin: '/parent/login',
+  ApplyLeave: '/parent/apply-leave',
+  ViewMarks: '/parent/view-marks',
+  
+  ManageStudents: { principal: '/principal/manage-students', teacher: '/teacher/add-students' },
+  ManageExams: { principal: '/principal/manage-exams', teacher: '/teacher/manage-exams' },
+  Communication: { teacher: '/teacher/messages', parent: '/parent/messages' },
+  StudentProgress: { teacher: '/teacher/student-progress', parent: '/parent/student-progress' },
+  ReportCard: { teacher: '/teacher/report-card', parent: '/parent/report-card' },
+  UnapprovedAbsences: { principal: '/principal/unapproved-absences', teacher: '/teacher/unapproved-absences' },
+  AttendanceApproval: { principal: '/principal/attendance-approval', teacher: '/teacher/attendance-approval' },
+
+  Home: '/',
+  RoleSelection: '/roleselection',
+  JoinSchool: '/join-school',
+  JoinTeacher: '/join-teacher',
+  Login: '/login',
+  Register: '/register',
+  SetupSchool: '/setup-school',
+};
+
 export const createPageUrl = (pageName, params = {}) => {
   const { Pages } = pagesConfig;
   
@@ -17,16 +66,24 @@ export const createPageUrl = (pageName, params = {}) => {
     return '#';
   }
 
-  // In our local Vite setup, we use simple paths.
-  // Base44 usually has a more complex structure, but for this migrated version:
   let url = `/${pageName.toLowerCase()}`;
+  
+  const mapped = PAGE_ROUTES[pageName];
+  if (mapped) {
+    if (typeof mapped === 'string') {
+      url = mapped;
+    } else {
+      const path = window.location.pathname;
+      if (path.startsWith('/principal') && mapped.principal) url = mapped.principal;
+      else if (path.startsWith('/teacher') && mapped.teacher) url = mapped.teacher;
+      else if (path.startsWith('/parent') && mapped.parent) url = mapped.parent;
+      else url = Object.values(mapped)[0];
+    }
+  }
 
-  // Append query parameters if any
   const queryParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      queryParams.append(key, value);
-    }
+    if (value !== undefined && value !== null) queryParams.append(key, value);
   });
 
   const queryString = queryParams.toString();

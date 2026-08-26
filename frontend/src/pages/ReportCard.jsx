@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import {
   getStudentsByClass, getAttendanceByClassInYear,
   getExamsByClass, getMarksByStudent, getMarksByExams, getClassById,
   getSchoolById, getAcademicYearDates,
 } from '@/lib/db';
-import { ArrowLeft, Loader2, Printer, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Loader2, Printer, GraduationCap, Award } from 'lucide-react';
 
 const gradeFromPct = (pct) => {
   if (pct >= 90) return 'A+';
@@ -17,25 +18,29 @@ const gradeFromPct = (pct) => {
   return 'F';
 };
 
+const gradeRemarks = (grade) => {
+  const rem = {
+    'A+': 'Outstanding Performance',
+    'A': 'Excellent Work',
+    'B+': 'Very Good',
+    'B': 'Good Progress',
+    'C': 'Satisfactory',
+    'D': 'Needs Improvement',
+    'F': 'Fail',
+  };
+  return rem[grade] || '';
+};
+
 function Detail({ label, value }) {
   return (
-    <div>
-      <span className="text-xs text-slate-500 font-semibold">{label}: </span>
-      <span className="text-sm font-bold text-slate-800">{value}</span>
+    <div className="flex flex-col">
+      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+      <span className="text-sm font-semibold text-slate-900 border-b border-slate-300 pb-1 mt-1">{value}</span>
     </div>
   );
 }
 
-function AttBox({ label, value, color }) {
-  return (
-    <div>
-      <p className={`text-2xl font-extrabold ${color}`}>{value}</p>
-      <p className="text-xs text-slate-500 mt-1">{label}</p>
-    </div>
-  );
-}
-
-export default function ReportCard() {
+function ReportCardContent() {
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
   const studentId = params.get('studentId');
@@ -44,6 +49,7 @@ export default function ReportCard() {
   const [loading, setLoading] = useState(true);
   const [student, setStudent] = useState(null);
   const [classInfo, setClassInfo] = useState(null);
+  const [schoolInfo, setSchoolInfo] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [exams, setExams] = useState([]);
   const [marks, setMarks] = useState([]);
@@ -64,6 +70,8 @@ export default function ReportCard() {
       setClassInfo(cls);
 
       const school = cls?.school_id ? await getSchoolById(cls.school_id).catch(() => null) : null;
+      setSchoolInfo(school);
+      
       const { start, end, label } = getAcademicYearDates(school);
       setYearLabel(label);
 
@@ -121,171 +129,226 @@ export default function ReportCard() {
   const totalObtained = marksRows.reduce((s, r) => s + (r.obtained || 0), 0);
   const totalMax = marksRows.reduce((s, r) => s + r.max, 0);
   const overallPct = totalMax > 0 ? Math.round((totalObtained / totalMax) * 100) : null;
+  const overallGrade = overallPct !== null ? gradeFromPct(overallPct) : '—';
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
     </div>
   );
 
   if (!student) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <p className="text-slate-500">Student not found.</p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <p className="text-slate-500 font-medium">Student not found.</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 print:bg-white">
+    <div className="min-h-screen bg-slate-200 py-8 print:py-0 print:bg-white flex flex-col items-center">
       {/* Toolbar — hidden when printing */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50 print:hidden">
-        <div className="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-            <ArrowLeft className="w-4 h-4 text-slate-600" />
-          </button>
-          <h1 className="font-bold text-slate-800 flex-1">Report Card</h1>
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 rounded-lg transition-colors"
-          >
-            <Printer className="w-4 h-4" />
-            Print / Save PDF
-          </button>
-        </div>
+      <header className="w-[210mm] max-w-full bg-white border border-slate-300 rounded-lg shadow-sm mb-6 px-4 py-3 flex items-center justify-between print:hidden">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 font-medium px-3 py-1.5 rounded hover:bg-slate-100 transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </button>
+        <button
+          onClick={() => window.print()}
+          className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors shadow-sm"
+        >
+          <Printer className="w-4 h-4" />
+          Print A4 Format
+        </button>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 print:px-0 print:py-0">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-0 print:rounded-none">
+      {/* A4 Document Container */}
+      <div className="w-[210mm] min-h-[297mm] bg-white shadow-2xl print:shadow-none relative overflow-hidden text-slate-900 border border-slate-200 print:border-none print:w-auto print:min-h-0 mx-auto">
+        
+        {/* Decorative Borders */}
+        <div className="absolute inset-0 border-[12px] border-double border-slate-800 m-4 pointer-events-none z-10 opacity-10 print:opacity-100 print:border-slate-800"></div>
+        <div className="absolute inset-0 border-2 border-solid border-amber-500 m-[22px] pointer-events-none z-10 opacity-30 print:opacity-100"></div>
 
-          {/* Report header */}
-          <div className="bg-blue-700 text-white px-8 py-6 text-center">
-            <div className="flex justify-center mb-2">
-              <GraduationCap className="w-10 h-10 opacity-90" />
+        {/* Watermark Logo */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none z-0">
+           <GraduationCap className="w-96 h-96" />
+        </div>
+
+        {/* Main Content Area */}
+        <div className="relative z-20 px-16 py-16">
+          
+          {/* Header Section */}
+          <div className="text-center mb-8 border-b-2 border-slate-800 pb-8">
+            <div className="flex justify-center mb-4">
+              <div className="w-20 h-20 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md border-4 border-amber-500">
+                <GraduationCap className="w-10 h-10" />
+              </div>
             </div>
-            <h1 className="text-2xl font-extrabold tracking-wide">STUDENT REPORT CARD</h1>
-            <p className="text-blue-200 text-sm mt-1">
-              Academic Progress Report{yearLabel ? ` · ${yearLabel}` : ''}
+            <h1 className="text-3xl font-black uppercase tracking-[0.2em] text-slate-900 mb-2">
+              {schoolInfo?.name || 'EduSphere Academy'}
+            </h1>
+            <p className="text-sm font-semibold text-slate-600 uppercase tracking-widest mb-4">
+              Excellence in Education
+            </p>
+            <div className="inline-block bg-slate-100 border border-slate-300 px-6 py-2 rounded-full">
+              <h2 className="text-lg font-bold text-slate-800 tracking-wide">
+                OFFICIAL REPORT CARD
+              </h2>
+            </div>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-4">
+              Academic Year {yearLabel ? yearLabel : '2023-2024'}
             </p>
           </div>
 
-          {/* Student details */}
-          <div className="px-8 py-5 bg-slate-50 border-b border-slate-200">
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2.5">
-              <Detail label="Student Name" value={student.name} />
-              <Detail label="Class"
-                value={`${classInfo?.name || '—'}${classInfo?.section ? ' – ' + classInfo.section : ''}`} />
-              <Detail label="Roll Number" value={student.roll_number || '—'} />
-              <Detail label="Admission No." value={student.admission_number || '—'} />
-              {student.parent_name && <Detail label="Parent Name" value={student.parent_name} />}
-              {rank && <Detail label="Class Rank" value={`#${rank} of ${totalStudents} students`} />}
-              <Detail label="Date Printed"
-                value={new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} />
-            </div>
+          {/* Student Details Grid */}
+          <div className="grid grid-cols-2 gap-x-12 gap-y-6 mb-10 bg-slate-50 border border-slate-200 p-6 rounded-lg">
+            <Detail label="Student Name" value={student.name || '—'} />
+            <Detail label="Class & Section" value={`${classInfo?.name || '—'}${classInfo?.section ? ' - ' + classInfo.section : ''}`} />
+            <Detail label="Roll Number" value={student.roll_number || '—'} />
+            <Detail label="Admission Number" value={student.admission_number || '—'} />
+            <Detail label="Parent / Guardian" value={student.parent_name || '—'} />
+            <Detail label="Date of Issue" value={new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} />
           </div>
 
-          {/* Marks table */}
-          <div className="px-8 py-6">
-            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Examination Results</h2>
+          {/* Academic Performance */}
+          <div className="mb-10">
+            <h3 className="text-lg font-black text-slate-900 uppercase tracking-wider border-b-2 border-amber-500 pb-2 mb-4 flex items-center gap-2">
+              <Award className="w-5 h-5 text-amber-600" />
+              Scholastic Performance
+            </h3>
+            
             {marksRows.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-6">No exam marks recorded yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-slate-200">
-                      {['Exam', 'Subject', 'Max', 'Obtained', '%', 'Grade'].map(h => (
-                        <th key={h} className={`py-2 text-xs font-bold text-slate-500 uppercase tracking-wider ${
-                          h === 'Exam' || h === 'Subject' ? 'text-left pr-4' : 'text-center px-2'
-                        }`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {marksRows.map((row, i) => (
-                      <tr key={i} className="border-b border-slate-100 last:border-0">
-                        <td className="py-3 pr-4 font-medium text-slate-800">{row.exam.name}</td>
-                        <td className="py-3 pr-4 text-slate-600">{row.exam.subject || '—'}</td>
-                        <td className="py-3 px-2 text-center text-slate-600">{row.max}</td>
-                        <td className="py-3 px-2 text-center font-semibold text-slate-800">{row.obtained}</td>
-                        <td className="py-3 px-2 text-center text-slate-600">{row.pct}%</td>
-                        <td className="py-3 pl-2 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                            ['A+', 'A'].includes(row.grade) ? 'bg-green-100 text-green-700' :
-                            ['B+', 'B'].includes(row.grade) ? 'bg-blue-100 text-blue-700' :
-                            row.grade === 'C' ? 'bg-yellow-100 text-yellow-700' :
-                            row.grade === 'D' ? 'bg-orange-100 text-orange-700' :
-                            'bg-red-100 text-red-700'
-                          }`}>{row.grade}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {marksRows.length > 1 && totalMax > 0 && (
-                    <tfoot>
-                      <tr className="border-t-2 border-slate-300 bg-slate-50">
-                        <td colSpan={2} className="py-3 pr-4 font-bold text-slate-800">TOTAL</td>
-                        <td className="py-3 px-2 text-center font-bold text-slate-800">{totalMax}</td>
-                        <td className="py-3 px-2 text-center font-bold text-slate-800">{totalObtained}</td>
-                        <td className="py-3 px-2 text-center font-bold text-slate-800">{overallPct}%</td>
-                        <td className="py-3 pl-2 text-center">
-                          {overallPct !== null && (
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-                              overallPct >= 80 ? 'bg-green-100 text-green-700' :
-                              overallPct >= 60 ? 'bg-blue-100 text-blue-700' :
-                              overallPct >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
-                            }`}>{gradeFromPct(overallPct)}</span>
-                          )}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
+              <div className="bg-slate-50 border border-dashed border-slate-300 p-8 text-center text-slate-500 italic">
+                No examination records available for this term.
               </div>
+            ) : (
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-800 text-white">
+                    <th className="py-3 px-4 text-left font-bold uppercase tracking-wider border border-slate-800">Examination / Subject</th>
+                    <th className="py-3 px-4 text-center font-bold uppercase tracking-wider border border-slate-800 w-24">Max</th>
+                    <th className="py-3 px-4 text-center font-bold uppercase tracking-wider border border-slate-800 w-24">Obt.</th>
+                    <th className="py-3 px-4 text-center font-bold uppercase tracking-wider border border-slate-800 w-20">%</th>
+                    <th className="py-3 px-4 text-center font-bold uppercase tracking-wider border border-slate-800 w-24">Grade</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {marksRows.map((row, i) => (
+                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                      <td className="py-3 px-4 font-semibold text-slate-800 border border-slate-300">
+                        {row.exam.name}
+                        {row.exam.subject && <span className="block text-xs font-normal text-slate-500">{row.exam.subject}</span>}
+                      </td>
+                      <td className="py-3 px-4 text-center text-slate-600 border border-slate-300">{row.max}</td>
+                      <td className="py-3 px-4 text-center font-bold text-slate-900 border border-slate-300">{row.obtained}</td>
+                      <td className="py-3 px-4 text-center text-slate-600 border border-slate-300 font-mono">{row.pct}%</td>
+                      <td className="py-3 px-4 text-center font-black border border-slate-300 text-slate-800">{row.grade}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                {marksRows.length > 1 && totalMax > 0 && (
+                  <tfoot>
+                    <tr className="bg-slate-100 font-bold border-t-[3px] border-slate-800">
+                      <td className="py-4 px-4 text-right uppercase tracking-wider text-slate-900 border border-slate-300">Grand Total</td>
+                      <td className="py-4 px-4 text-center text-slate-900 border border-slate-300">{totalMax}</td>
+                      <td className="py-4 px-4 text-center text-slate-900 border border-slate-300">{totalObtained}</td>
+                      <td className="py-4 px-4 text-center text-slate-900 border border-slate-300 font-mono">{overallPct}%</td>
+                      <td className="py-4 px-4 text-center text-slate-900 border border-slate-300 text-lg">{overallGrade}</td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
             )}
           </div>
 
-          {/* Attendance summary */}
-          <div className="px-8 py-5 bg-slate-50 border-t border-slate-200">
-            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Attendance Summary</h2>
-            <div className="grid grid-cols-4 gap-4 text-center">
-              <AttBox label="Total Days" value={attTotal} color="text-slate-800" />
-              <AttBox label="Present" value={attPresent} color="text-green-600" />
-              <AttBox label="Absent" value={attAbsent} color="text-red-600" />
-              <AttBox label="Late" value={attLate} color="text-orange-600" />
-            </div>
-            {attPct !== null && (
-              <div className="mt-4 text-center">
-                <span className="text-sm text-slate-600">Attendance Percentage: </span>
-                <span className={`text-sm font-bold ${
-                  attPct >= 75 ? 'text-green-600' : attPct >= 50 ? 'text-yellow-600' : 'text-red-600'
-                }`}>{attPct}%</span>
+          <div className="grid grid-cols-2 gap-8 mb-12">
+             {/* Attendance Summary */}
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-300 pb-2 mb-4">
+                Attendance Record
+              </h3>
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+                <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
+                  <span className="text-xs font-semibold text-slate-600 uppercase">Total School Days</span>
+                  <span className="font-bold text-slate-900">{attTotal}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
+                  <span className="text-xs font-semibold text-slate-600 uppercase">Days Present</span>
+                  <span className="font-bold text-slate-900">{attPresent + attLate}</span>
+                </div>
+                <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-200">
+                  <span className="text-xs font-semibold text-slate-600 uppercase">Days Absent</span>
+                  <span className="font-bold text-slate-900">{attAbsent}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Percentage</span>
+                  <span className="font-black text-slate-900 text-lg">{attPct !== null ? `${attPct}%` : '—'}</span>
+                </div>
               </div>
-            )}
+            </div>
+
+            {/* Remarks & Rank */}
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-300 pb-2 mb-4">
+                Overall Assessment
+              </h3>
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg h-full">
+                 <div className="mb-4">
+                   <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Class Rank</p>
+                   {rank ? (
+                     <p className="text-xl font-black text-slate-900">#{rank} <span className="text-sm font-medium text-slate-500">out of {totalStudents}</span></p>
+                   ) : (
+                     <p className="font-semibold text-slate-700">—</p>
+                   )}
+                 </div>
+                 <div>
+                   <p className="text-xs font-semibold text-slate-500 uppercase mb-1">Teacher's Remarks</p>
+                   <p className="font-semibold text-slate-800 italic">
+                     {overallPct !== null ? gradeRemarks(overallGrade) : 'Evaluation Pending'}
+                   </p>
+                 </div>
+              </div>
+            </div>
           </div>
 
           {/* Signatures */}
-          <div className="px-8 py-6 border-t border-slate-200 grid grid-cols-2 gap-8 text-center">
-            <div>
-              <div className="border-t border-slate-400 mt-10 pt-2 text-xs text-slate-500">
-                Class Teacher Signature
-              </div>
+          <div className="mt-20 pt-16 grid grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="border-t border-slate-800 mx-4"></div>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-600 mt-3">Class Teacher</p>
             </div>
-            <div>
-              <div className="border-t border-slate-400 mt-10 pt-2 text-xs text-slate-500">
-                Principal Signature
-              </div>
+            <div className="text-center">
+              <div className="border-t border-slate-800 mx-4"></div>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-600 mt-3">Parent / Guardian</p>
+            </div>
+            <div className="text-center">
+              <div className="border-t border-slate-800 mx-4"></div>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-600 mt-3">Principal</p>
             </div>
           </div>
 
         </div>
       </div>
-
+      
+      {/* Hide the sidebar when printing, ensure A4 dimensions */}
       <style>{`
         @media print {
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          header { display: none !important; }
+          @page { size: A4 portrait; margin: 0; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; margin: 0; padding: 0; }
+          /* Hide the AppLayout sidebar */
+          aside, nav { display: none !important; }
+          /* Force main content to take full width */
+          main { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
+          /* Remove layout backgrounds */
+          #root > div > div, #root > div > main { background: white !important; }
         }
       `}</style>
     </div>
+  );
+}
+
+export default function ReportCard() {
+  return (
+    <AppLayout title="Report Card">
+      <ReportCardContent />
+    </AppLayout>
   );
 }

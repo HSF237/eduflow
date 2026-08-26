@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
@@ -14,7 +15,7 @@ const emptySchedule = (count = DEFAULT_PERIODS) => {
   return s;
 };
 
-export default function Timetable() {
+function TimetableContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
 
@@ -167,5 +168,14 @@ export default function Timetable() {
         </p>
       </main>
     </div>
+  );
+}
+
+
+export default function Timetable() {
+  return (
+    <AppLayout title="Timetable">
+      <TimetableContent />
+    </AppLayout>
   );
 }

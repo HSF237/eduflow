@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { getStudentsByClass, getMarksByStudent } from '@/lib/db';
@@ -144,7 +145,7 @@ function StudentMarksCard({ student }) {
   );
 }
 
-export default function ViewMarks() {
+function ViewMarksContent() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
@@ -214,5 +215,14 @@ export default function ViewMarks() {
         )}
       </main>
     </div>
+  );
+}
+
+
+export default function ViewMarks() {
+  return (
+    <AppLayout title="View Marks">
+      <ViewMarksContent />
+    </AppLayout>
   );
 }

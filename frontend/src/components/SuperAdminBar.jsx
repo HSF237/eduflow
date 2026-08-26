@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/hooks/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { ShieldCheck, Crown, Users, GraduationCap, Building2, UserPlus, RefreshCw } from 'lucide-react';
 
 export default function SuperAdminBar() {
@@ -13,16 +14,16 @@ export default function SuperAdminBar() {
   }
 
   const navItems = [
-    { label: 'Principal', path: '/principaldashboard', icon: Crown },
-    { label: 'Teacher', path: '/teacherdashboard', icon: GraduationCap },
-    { label: 'Parent', path: '/parentdashboard', icon: Users },
-    { label: 'Setup School', path: '/setupschool', icon: Building2 },
-    { label: 'Join School', path: '/joinschool', icon: UserPlus },
-    { label: 'Roles', path: '/roleselection', icon: RefreshCw },
+    { label: 'Principal', path: createPageUrl('PrincipalDashboard'), icon: Crown },
+    { label: 'Teacher', path: createPageUrl('TeacherDashboard'), icon: GraduationCap },
+    { label: 'Parent', path: createPageUrl('ParentDashboard'), icon: Users },
+    { label: 'Setup School', path: createPageUrl('SetupSchool'), icon: Building2 },
+    { label: 'Join School', path: createPageUrl('JoinSchool'), icon: UserPlus },
+    { label: 'Roles', path: createPageUrl('RoleSelection'), icon: RefreshCw },
   ];
 
   return (
-    <div className="bg-slate-900 border-b border-amber-500/30 text-white px-4 py-2 flex flex-wrap items-center justify-between text-xs shadow-md z-50 sticky top-0">
+    <div className="bg-slate-900 border-b border-amber-500/30 text-white px-4 h-10 flex flex-wrap items-center justify-between text-xs shadow-md z-50 sticky top-0">
       <div className="flex items-center gap-2 font-bold text-amber-400">
         <ShieldCheck className="w-4 h-4 text-amber-400 animate-pulse" />
         <span>SUPER ADMIN (zerox9861@gmail.com)</span>

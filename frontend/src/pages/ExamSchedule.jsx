@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/hooks/AuthContext';
@@ -8,7 +9,7 @@ import {
 } from '@/lib/db';
 import { ArrowLeft, Loader2, CalendarDays, Plus, Trash2, AlertCircle } from 'lucide-react';
 
-export default function ExamSchedule() {
+function ExamScheduleContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -270,5 +271,14 @@ export default function ExamSchedule() {
         )}
       </main>
     </div>
+  );
+}
+
+
+export default function ExamSchedule() {
+  return (
+    <AppLayout title="Exam Schedule">
+      <ExamScheduleContent />
+    </AppLayout>
   );
 }

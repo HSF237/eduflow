@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
@@ -8,7 +9,7 @@ import {
 } from '@/lib/db';
 import { ArrowLeft, Loader2, Megaphone, Plus, Trash2, X } from 'lucide-react';
 
-export default function Announcements() {
+function AnnouncementsContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
 
@@ -179,5 +180,14 @@ export default function Announcements() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function Announcements() {
+  return (
+    <AppLayout title="Announcements">
+      <AnnouncementsContent />
+    </AppLayout>
   );
 }

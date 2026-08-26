@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { getClassById, getStudentsByClass, getAttendanceByClassAndDate, saveAttendance } from '@/lib/db';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
@@ -11,7 +12,7 @@ const STATUS_STYLE = {
   late: 'bg-yellow-100 text-yellow-700 border-yellow-300',
 };
 
-export default function EditAttendance() {
+function EditAttendanceContent() {
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
   const classId = params.get('classId');
@@ -128,5 +129,14 @@ export default function EditAttendance() {
         )}
       </main>
     </div>
+  );
+}
+
+
+export default function EditAttendance() {
+  return (
+    <AppLayout title="Edit Attendance">
+      <EditAttendanceContent />
+    </AppLayout>
   );
 }

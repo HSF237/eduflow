@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
 import { createPageUrl } from '@/utils';
@@ -12,7 +13,7 @@ const SUBJECTS = [
   'Computer', 'Art', 'PE', 'Sanskrit', 'Other',
 ];
 
-export default function Diary() {
+function DiaryContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
 
@@ -219,5 +220,14 @@ export default function Diary() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function Diary() {
+  return (
+    <AppLayout title="Diary">
+      <DiaryContent />
+    </AppLayout>
   );
 }

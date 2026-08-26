@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { useAuth } from '@/hooks/AuthContext';
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -45,6 +46,11 @@ export default function DashboardSidebar({
   const navigate = useNavigate();
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user, isSuperAdmin } = useAuth();
+  
+  const showSuperBar = isSuperAdmin || user?.email?.toLowerCase() === 'zerox9861@gmail.com';
+  const sidebarTopClass = showSuperBar ? 'top-10' : 'top-0';
+  const sidebarHeightClass = showSuperBar ? 'h-[calc(100vh-40px)]' : 'h-screen';
 
   const currentPath = location.pathname.toLowerCase();
 
@@ -57,7 +63,7 @@ export default function DashboardSidebar({
           items: [
             {
               label: "Mark Attendance",
-              path: `/markattendance${selectedClassId ? `?classId=${selectedClassId}` : ''}`,
+              path: `${createPageUrl('MarkAttendance')}${selectedClassId ? `?classId=${selectedClassId}` : ''}`,
               icon: ClipboardCheck,
               primary: true,
             },
@@ -354,7 +360,7 @@ export default function DashboardSidebar({
   };
 
   const navContent = (
-    <div className={`h-screen max-h-screen flex flex-col ${themeColors.bg} text-white transition-all duration-300 select-none overflow-hidden`}>
+    <div className={`${sidebarHeightClass} flex flex-col ${themeColors.bg} text-white transition-all duration-300 select-none overflow-hidden`}>
       {/* Top Brand / Header */}
       <div className={`p-3.5 border-b border-white/10 flex shrink-0 ${isCollapsed ? 'flex-col items-center gap-2.5' : 'items-center justify-between'}`}>
         <div className="flex items-center gap-3 min-w-0">
@@ -525,7 +531,7 @@ export default function DashboardSidebar({
     <>
       {/* Desktop Persistent Sidebar */}
       <aside
-        className={`hidden lg:block shrink-0 sticky top-0 h-screen z-30 transition-all duration-300 ${
+        className={`hidden lg:block shrink-0 sticky ${sidebarTopClass} ${sidebarHeightClass} z-30 transition-all duration-300 self-start ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
       >

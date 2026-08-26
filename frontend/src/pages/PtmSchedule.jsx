@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { useAuth } from '@/hooks/AuthContext';
@@ -10,7 +11,7 @@ import { ArrowLeft, Loader2, Users, Plus, Trash2, Edit2, AlertCircle, Check, X }
 
 const emptyForm = { date: '', time_from: '', time_to: '', venue: '', notes: '' };
 
-export default function PtmSchedule() {
+function PtmScheduleContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -289,5 +290,14 @@ export default function PtmSchedule() {
         )}
       </main>
     </div>
+  );
+}
+
+
+export default function PtmSchedule() {
+  return (
+    <AppLayout title="Ptm Schedule">
+      <PtmScheduleContent />
+    </AppLayout>
   );
 }

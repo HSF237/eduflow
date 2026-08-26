@@ -6,7 +6,15 @@ import {
   getSchoolById, getAcademicYearDates, updateStudent, generateParentCode,
   getExamsByClass, getMarksByExams,
 } from '@/lib/db';
-import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText, TrendingUp, Award, X } from 'lucide-react';
+
+const AVAILABLE_BADGES = [
+  { id: 'helping_others', icon: '🌟', label: 'Helping Others', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { id: 'reading_champ', icon: '📚', label: 'Reading Champ', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  { id: 'problem_solver', icon: '🧩', label: 'Problem Solver', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { id: 'great_listener', icon: '👂', label: 'Great Listener', color: 'bg-pink-100 text-pink-700 border-pink-200' },
+  { id: 'creative_thinker', icon: '🎨', label: 'Creative Thinker', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+];
 
 export default function ViewStudents() {
   const navigate = useNavigate();
@@ -20,6 +28,7 @@ export default function ViewStudents() {
   const [copiedId, setCopiedId] = useState(null);
   const [regeneratingId, setRegeneratingId] = useState(null);
   const [ranks, setRanks] = useState({});
+  const [awardingBadgeTo, setAwardingBadgeTo] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -104,6 +113,13 @@ export default function ViewStudents() {
       console.error('Error regenerating code:', err);
     }
     setRegeneratingId(null);
+  };
+
+  const awardBadge = async (student, badgeId) => {
+    const newBadges = [...(student.badges || []), badgeId];
+    setStudents(prev => prev.map(s => s.id === student.id ? { ...s, badges: newBadges } : s));
+    setAwardingBadgeTo(null);
+    await updateStudent(student.id, { badges: newBadges });
   };
 
   const filtered = students
@@ -248,6 +264,34 @@ export default function ViewStudents() {
           <div className="text-center py-12">
             <Users className="w-12 h-12 mx-auto mb-4 text-slate-300" />
             <p className="text-slate-500">No students found</p>
+          </div>
+        )}
+
+        {awardingBadgeTo && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-5 bg-gradient-to-r from-amber-400 to-orange-500 text-white flex items-center justify-between">
+                <div>
+                  <h3 className="font-extrabold text-lg">Award Badge</h3>
+                  <p className="text-amber-50 text-xs">To {awardingBadgeTo.name}</p>
+                </div>
+                <button onClick={() => setAwardingBadgeTo(null)} className="p-1.5 hover:bg-white/20 rounded-xl transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-5 flex flex-col gap-3">
+                {AVAILABLE_BADGES.map(badge => (
+                  <button
+                    key={badge.id}
+                    onClick={() => awardBadge(awardingBadgeTo, badge.id)}
+                    className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left hover:scale-[1.02] ${badge.color}`}
+                  >
+                    <span className="text-2xl">{badge.icon}</span>
+                    <span className="font-bold text-sm">{badge.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </main>

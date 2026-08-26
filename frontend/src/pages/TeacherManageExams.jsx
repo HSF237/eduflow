@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/hooks/AuthContext';
 import {
   getTeacherByUserId,
@@ -32,7 +33,7 @@ const emptyForm = {
   exam_date: '',
 };
 
-export default function TeacherManageExams() {
+function TeacherManageExamsContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
 
@@ -510,5 +511,14 @@ export default function TeacherManageExams() {
         </div>
       )}
     </div>
+  );
+}
+
+
+export default function TeacherManageExams() {
+  return (
+    <AppLayout title="Teacher Manage Exams">
+      <TeacherManageExamsContent />
+    </AppLayout>
   );
 }

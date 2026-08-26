@@ -381,9 +381,13 @@ export default function TeacherDashboard() {
                   Attendance not marked for today
                 </p>
                 <button
-                  onClick={() =>
-                    navigate(`/markattendance?classId=${selectedClassId}`)
-                  }
+                  onClick={() => {
+                    if (selectedClassId) {
+                      navigate(`${createPageUrl('MarkAttendance')}?classId=${selectedClassId}`);
+                    } else {
+                      navigate(createPageUrl('MarkAttendance'));
+                    }
+                  }}
                   className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
                 >
                   Mark Now

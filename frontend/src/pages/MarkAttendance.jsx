@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
 import {
@@ -28,7 +29,7 @@ const COUNTER_STYLES = {
   'Half-day': { bg: 'bg-blue-50',   text: 'text-blue-600',   label: 'text-blue-700'  },
 };
 
-export default function MarkAttendance() {
+function MarkAttendanceContent() {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
   const [searchParams] = useSearchParams();
@@ -270,5 +271,14 @@ export default function MarkAttendance() {
         </div>
       </main>
     </div>
+  );
+}
+
+
+export default function MarkAttendance() {
+  return (
+    <AppLayout title="Mark Attendance">
+      <MarkAttendanceContent />
+    </AppLayout>
   );
 }

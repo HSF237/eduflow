@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/hooks/AuthContext';
 import { getTeacherByUserId, getClasses, getAttendanceByClass, getStudentsByClass } from '@/lib/db';
 import { useNavigate } from 'react-router-dom';
@@ -19,7 +20,7 @@ const MONTHS = [
   { value: '11', label: 'November' }, { value: '12', label: 'December' },
 ];
 
-export default function AttendanceAnalytics() {
+function AttendanceAnalyticsContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -280,5 +281,14 @@ export default function AttendanceAnalytics() {
 
       </div>
     </div>
+  );
+}
+
+
+export default function AttendanceAnalytics() {
+  return (
+    <AppLayout title="Attendance Analytics">
+      <AttendanceAnalyticsContent />
+    </AppLayout>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/hooks/AuthContext';
 import {
   getTeacherByUserId,
@@ -20,7 +21,7 @@ const EXAM_TYPES = [
   { key: 'Other', label: 'Other', color: 'bg-slate-500', light: 'bg-slate-50 border-slate-200', text: 'text-slate-700' },
 ];
 
-export default function EnterMarks() {
+function EnterMarksContent() {
   const navigate = useNavigate();
   const { user: authUser, isLoadingAuth } = useAuth();
 
@@ -386,5 +387,14 @@ export default function EnterMarks() {
         )}
       </div>
     </div>
+  );
+}
+
+
+export default function EnterMarks() {
+  return (
+    <AppLayout title="Enter Marks">
+      <EnterMarksContent />
+    </AppLayout>
   );
 }

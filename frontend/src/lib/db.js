@@ -1,16 +1,72 @@
 import { pb } from './pocketbase';
 
 // Firestore stubs for self-hosted fallback mode
-const collection = () => ({});
-const doc = () => ({});
-const getDoc = async () => ({ exists: () => false, data: () => ({}) });
-const getDocs = async () => ({ empty: true, docs: [], size: 0 });
-const addDoc = async () => ({ id: 'local_' + Math.random().toString(36).substring(2, 9) });
-const updateDoc = async () => {};
-const deleteDoc = async () => {};
-const query = () => ({});
-const where = () => ({});
-const setDoc = async () => {};
+const collection = (db, name) => ({ type: 'collection', name });
+const doc = (db, name, id) => ({ type: 'doc', name, id });
+const where = (field, op, value) => ({ field, op, value });
+const query = (coll, ...wheres) => ({ coll, wheres });
+
+const getDocs = async (q) => {
+  const collName = q.coll.name;
+  let items = JSON.parse(localStorage.getItem(`mock_db_${collName}`) || '[]');
+  for (const w of q.wheres) {
+     if (w.op === '==') items = items.filter(i => i[w.field] === w.value);
+     if (w.op === '>=') items = items.filter(i => i[w.field] >= w.value);
+     if (w.op === '<=') items = items.filter(i => i[w.field] <= w.value);
+     if (w.op === 'array-contains') items = items.filter(i => Array.isArray(i[w.field]) && i[w.field].includes(w.value));
+  }
+  const docs = items.map(data => ({
+     id: data.id,
+     data: () => data,
+     ref: { type: 'doc', name: collName, id: data.id }
+  }));
+  return { empty: docs.length === 0, docs, size: docs.length };
+};
+
+const getDoc = async (docRef) => {
+  const items = JSON.parse(localStorage.getItem(`mock_db_${docRef.name}`) || '[]');
+  const data = items.find(i => i.id === docRef.id);
+  if (data) return { exists: () => true, data: () => data, id: data.id };
+  return { exists: () => false, data: () => ({}) };
+};
+
+const addDoc = async (coll, data) => {
+  const collName = coll.name;
+  const items = JSON.parse(localStorage.getItem(`mock_db_${collName}`) || '[]');
+  const newId = 'local_' + Math.random().toString(36).substring(2, 11);
+  const docData = { id: newId, ...data };
+  items.push(docData);
+  localStorage.setItem(`mock_db_${collName}`, JSON.stringify(items));
+  return { id: newId };
+};
+
+const setDoc = async (docRef, data, options = {}) => {
+  const items = JSON.parse(localStorage.getItem(`mock_db_${docRef.name}`) || '[]');
+  const idx = items.findIndex(i => i.id === docRef.id);
+  if (idx >= 0) {
+    if (options.merge) items[idx] = { ...items[idx], ...data };
+    else items[idx] = { id: docRef.id, ...data };
+  } else {
+    items.push({ id: docRef.id, ...data });
+  }
+  localStorage.setItem(`mock_db_${docRef.name}`, JSON.stringify(items));
+};
+
+const updateDoc = async (docRef, data) => {
+  const items = JSON.parse(localStorage.getItem(`mock_db_${docRef.name}`) || '[]');
+  const idx = items.findIndex(i => i.id === docRef.id);
+  if (idx >= 0) {
+    items[idx] = { ...items[idx], ...data };
+    localStorage.setItem(`mock_db_${docRef.name}`, JSON.stringify(items));
+  }
+};
+
+const deleteDoc = async (docRef) => {
+  const items = JSON.parse(localStorage.getItem(`mock_db_${docRef.name}`) || '[]');
+  const filtered = items.filter(i => i.id !== docRef.id);
+  localStorage.setItem(`mock_db_${docRef.name}`, JSON.stringify(filtered));
+};
+
 const serverTimestamp = () => new Date().toISOString();
 const db = null;
 const auth = { currentUser: null };
@@ -465,6 +521,21 @@ export const getTeachers = async (schoolId) => {
     } catch (e) {}
   }
 
+  // Recover orphaned teachers stored individually
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith('teacher_user_')) {
+      try {
+        const t = JSON.parse(localStorage.getItem(key));
+        if (t && (!schoolId || t.school_id === schoolId)) {
+          if (!map.has(t.id || t.user_id)) {
+            map.set(t.id || t.user_id, t);
+          }
+        }
+      } catch (e) {}
+    }
+  }
+
   return sortBy(Array.from(map.values()), 'name');
 };
 
@@ -566,6 +637,28 @@ export const updateTeacher = async (id, data) => {
 
 export const upsertTeacher = async (data) => {
   let teacher = null;
+
+  const updateLocalLists = (t) => {
+    if (!t) return;
+    if (t.user_id) localStorage.setItem(`teacher_user_${t.user_id}`, JSON.stringify(t));
+    
+    try {
+      let globalList = JSON.parse(localStorage.getItem('all_local_teachers') || '[]');
+      const gIdx = globalList.findIndex(x => x.id === t.id || x.user_id === t.user_id);
+      if (gIdx >= 0) globalList[gIdx] = t; else globalList.push(t);
+      localStorage.setItem('all_local_teachers', JSON.stringify(globalList));
+    } catch (e) {}
+
+    if (t.school_id) {
+      try {
+        let schoolList = JSON.parse(localStorage.getItem(`teachers_${t.school_id}`) || '[]');
+        const sIdx = schoolList.findIndex(x => x.id === t.id || x.user_id === t.user_id);
+        if (sIdx >= 0) schoolList[sIdx] = t; else schoolList.push(t);
+        localStorage.setItem(`teachers_${t.school_id}`, JSON.stringify(schoolList));
+      } catch (e) {}
+    }
+  };
+
   try {
     const existing = await pb.collection('teachers').getFirstListItem(`user_id="${data.user_id}"`).catch(() => null);
     if (existing) {
@@ -573,8 +666,8 @@ export const upsertTeacher = async (data) => {
     } else {
       teacher = await pb.collection('teachers').create(data);
     }
-    if (teacher && data.user_id) {
-      localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
+    if (teacher) {
+      updateLocalLists(teacher);
       return teacher;
     }
   } catch (pbErr) {
@@ -589,14 +682,14 @@ export const upsertTeacher = async (data) => {
       teacher = { id: ref.id, ...data };
     } else {
       await updateDoc(s.docs[0].ref, data);
-      const teacher = { id: s.docs[0].id, ...data };
-      if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
-      return teacher;
+      teacher = { id: s.docs[0].id, ...data };
     }
+    updateLocalLists(teacher);
+    return teacher;
   } catch (err) {
     console.warn('upsertTeacher write failed, returning local object:', err);
-    const teacher = { id: 'teacher_' + data.user_id, ...data };
-    if (data.user_id) localStorage.setItem(`teacher_user_${data.user_id}`, JSON.stringify(teacher));
+    teacher = { id: 'teacher_' + data.user_id, ...data };
+    updateLocalLists(teacher);
     return teacher;
   }
 };
@@ -913,7 +1006,7 @@ export const sendMessage = async (data) => {
   let newMsg = null;
   try {
     const ref = await addDoc(collection(db, 'messages'), { ...data, created_at: serverTimestamp() });
-    newMsg = { id: ref.id, ...data };
+    newMsg = { id: ref.id, ...data, created_at: new Date().toISOString() };
   } catch (err) {
     console.warn('sendMessage Firestore write failed, using local fallback:', err);
     const mockId = 'msg_' + Math.random().toString(36).substring(2, 9);

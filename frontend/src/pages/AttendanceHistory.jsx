@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { getClassById, getStudentsByClass, getAttendanceByClass } from '@/lib/db';
 import { ArrowLeft, Loader2, Calendar, CheckCircle, XCircle, Clock, AlertTriangle, Download } from 'lucide-react';
 
-export default function AttendanceHistory() {
+function AttendanceHistoryContent() {
   const navigate = useNavigate();
   const classId = new URLSearchParams(window.location.search).get('classId');
 
@@ -199,5 +200,14 @@ export default function AttendanceHistory() {
         )}
       </main>
     </div>
+  );
+}
+
+
+export default function AttendanceHistory() {
+  return (
+    <AppLayout title="Attendance History">
+      <AttendanceHistoryContent />
+    </AppLayout>
   );
 }

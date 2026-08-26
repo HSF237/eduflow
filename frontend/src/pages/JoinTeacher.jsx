@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
 import { getSchoolById, upsertTeacher } from '@/lib/db';
+import { createPageUrl } from '@/utils';
 import {
   User,
   Mail,
@@ -103,7 +104,7 @@ export default function JoinTeacher() {
       localStorage.setItem(`teacher_user_${teacherUserId}`, JSON.stringify(teacherData));
 
       // 3. Immediately redirect to Teacher Dashboard
-      navigate('/teacherdashboard');
+      navigate(createPageUrl('TeacherDashboard'));
     } catch (err) {
       console.error('JoinTeacher error:', err);
       setError(err.message || 'Failed to create teacher account. Please try again.');
