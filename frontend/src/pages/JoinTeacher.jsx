@@ -18,7 +18,7 @@ export default function JoinTeacher() {
   const [searchParams] = useSearchParams();
   const schoolId = searchParams.get('schoolId') || searchParams.get('code') || '';
 
-  const { signup, login } = useAuth();
+  const { loginUser } = useAuth();
 
   const [loadingSchool, setLoadingSchool] = useState(true);
   const [school, setSchool] = useState(null);
@@ -67,28 +67,23 @@ export default function JoinTeacher() {
 
     setSubmitting(true);
     try {
-      // 1. Register or authenticate user
-      let userRes = null;
-      if (signup) {
-        try {
-          userRes = await signup({
-            email: formData.email.trim(),
-            password: formData.password.trim(),
-            name: formData.name.trim(),
-            role: 'TEACHER',
-          });
-        } catch (err) {
-          // Fallback to login if already exists
-          if (login) {
-            userRes = await login(formData.email.trim(), formData.password.trim());
-          }
-        }
+      // 1. Register user locally
+      const teacherUserId = 'teacher_' + Date.now();
+      
+      const userData = {
+        id: teacherUserId,
+        uid: teacherUserId,
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        role: 'TEACHER',
+      };
+
+      if (loginUser) {
+        loginUser(userData, 'fake_token_for_teacher', 'fake_refresh');
       }
 
-      const teacherUserId = userRes?.user?.id || userRes?.user?.uid || 'teacher_' + Date.now();
-
-      // 2. Link teacher profile to the school
       const teacherData = {
+        id: teacherUserId,
         user_id: teacherUserId,
         name: formData.name.trim(),
         email: formData.email.trim(),

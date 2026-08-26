@@ -59,7 +59,7 @@ function CommunicationContent() {
         const s = [{ id: parentStudentId, name: parentStudentName, roll_number: '-' }];
         setStudents(s);
         await fetchAllMessages(s);
-        loadReadTimestamps(s);
+        loadReadTimestamps(s, 'parent');
         
         setLoading(false);
         return;
@@ -106,7 +106,7 @@ function CommunicationContent() {
             
             setStudents(uniqueStuds);
             await fetchAllMessages(uniqueStuds);
-            loadReadTimestamps(uniqueStuds);
+            loadReadTimestamps(uniqueStuds, 'teacher');
           }
           setLoading(false);
           return;
@@ -137,18 +137,24 @@ function CommunicationContent() {
     }
   };
 
-  const loadReadTimestamps = (studs) => {
+  const [opposingReadTimestamps, setOpposingReadTimestamps] = useState({});
+
+  const loadReadTimestamps = (studs, r = role) => {
     const timestamps = {};
+    const opposing = {};
     studs.forEach(s => {
-      const ts = localStorage.getItem(`msg_read_${s.id}`);
+      const ts = localStorage.getItem(`${r}_read_${s.id}`);
+      const oppTs = localStorage.getItem(`${r === 'teacher' ? 'parent' : 'teacher'}_read_${s.id}`);
       timestamps[s.id] = ts ? Number(ts) : 0;
+      opposing[s.id] = oppTs ? Number(oppTs) : 0;
     });
     setReadTimestamps(timestamps);
+    setOpposingReadTimestamps(opposing);
   };
 
-  const markThreadAsRead = (studentId) => {
+  const markThreadAsRead = (studentId, r = role) => {
     const now = Date.now();
-    localStorage.setItem(`msg_read_${studentId}`, now.toString());
+    localStorage.setItem(`${r}_read_${studentId}`, now.toString());
     setReadTimestamps(prev => ({ ...prev, [studentId]: now }));
   };
 
@@ -433,7 +439,17 @@ function CommunicationContent() {
                                 <span className="text-[10px] text-slate-500">
                                   {parseTimestamp(msg.created_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}
                                 </span>
-                                {isMe && <CheckCheck className="w-3.5 h-3.5 text-blue-500" />}
+                                {isMe && (
+                                  (() => {
+                                    const msgTime = parseTimestamp(msg.created_at, true).getTime();
+                                    const oppReadTime = opposingReadTimestamps[selectedStudent] || 0;
+                                    const isRead = msgTime <= oppReadTime;
+                                    const isJustSent = (Date.now() - msgTime) < 2000;
+                                    if (isRead || activeStudentInfo?.isGroup) return <CheckCheck className="w-3.5 h-3.5 text-blue-500" />;
+                                    if (isJustSent) return <Check className="w-3.5 h-3.5 text-slate-400" />;
+                                    return <CheckCheck className="w-3.5 h-3.5 text-slate-400" />;
+                                  })()
+                                )}
                               </div>
                               
                             </div>

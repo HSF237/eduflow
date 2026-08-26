@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
 import DashboardSidebar from './DashboardSidebar';
+import FloatingMessageButton from './FloatingMessageButton';
 import { Menu, Sparkles } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 
@@ -76,6 +77,7 @@ export default function AppLayout({ children, title }) {
           {children}
         </div>
       </div>
+      <FloatingMessageButton />
     </div>
   );
 }

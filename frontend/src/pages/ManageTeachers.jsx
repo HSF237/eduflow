@@ -69,7 +69,7 @@ export default function ManageTeachers() {
   const generateInviteLink = () => {
     const baseUrl = window.location.origin;
     const schoolId = school?.id || 'demo_school';
-    return `${baseUrl}/jointeacher?schoolId=${schoolId}`;
+    return `${baseUrl}/join-teacher?schoolId=${schoolId}`;
   };
 
   const handleCopyLink = () => {
