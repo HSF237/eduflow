@@ -42,13 +42,24 @@ export default function Homework() {
     if (!teacher) { navigate(createPageUrl('JoinSchool')); return; }
     setTeacherData(teacher);
     const allClasses = await getClasses(teacher.school_id);
+    
     const dbSubjects = await getSubjects(teacher.school_id).catch(() => []);
+    
+    const teacherSubject = localStorage.getItem('teacher_subject');
+    const isSubjectTeacher = localStorage.getItem('teacher_role') === 'subject_teacher';
+    
     if (dbSubjects.length > 0) {
       const names = dbSubjects.map(s => s.name);
       setSubjectList([...new Set([...names, 'Other'])]);
-      setForm(f => ({ ...f, subject: names[0] }));
+      setForm(f => ({ ...f, subject: isSubjectTeacher && teacherSubject ? teacherSubject : names[0] }));
+    } else if (isSubjectTeacher && teacherSubject) {
+      setForm(f => ({ ...f, subject: teacherSubject, customSubject: teacherSubject }));
     }
-    const myClasses = allClasses.filter(c => c.teacher_id === teacher.id || (teacher.assigned_classes || []).includes(c.id));
+
+    const myClasses = allClasses.filter(c => 
+      c.class_teacher_id === teacher.id || 
+      (c.subject_teachers && c.subject_teachers.some(t => t.teacher_id === teacher.id))
+    );
     setClasses(myClasses);
     if (myClasses.length > 0) setSelectedClassId(myClasses[0].id);
     setLoading(false);
@@ -176,7 +187,7 @@ export default function Homework() {
         </main>
 
         {showForm && (
-          <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 z-[70] flex items-end sm:items-center justify-center p-4">
             <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-bold text-slate-800 text-lg">Add Homework</h2>

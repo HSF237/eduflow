@@ -6,7 +6,7 @@ import {
   getSchoolById, getAcademicYearDates, updateStudent, generateParentCode,
   getExamsByClass, getMarksByExams,
 } from '@/lib/db';
-import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText, TrendingUp, Award, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Users, Search, Copy, Check, KeyRound, RefreshCw, Share2, FileText, TrendingUp, X } from 'lucide-react';
 
 const AVAILABLE_BADGES = [
   { id: 'helping_others', icon: '🌟', label: 'Helping Others', color: 'bg-amber-100 text-amber-700 border-amber-200' },

@@ -9,6 +9,7 @@ import {
 } from '@/lib/db';
 import { requestAndSaveToken, onForegroundMessage } from '@/lib/fcm';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import { DashboardSkeleton } from '@/components/ui/SkeletonLoaders';
 import {
   GraduationCap, MessageCircle, Calendar, LogOut,
@@ -750,6 +751,7 @@ export default function ParentDashboard() {
         </div>
       )}
       </div>
+      <MobileBottomNav role="parent" />
     </div>
   );
 }

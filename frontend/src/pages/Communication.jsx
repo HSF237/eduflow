@@ -75,7 +75,11 @@ function CommunicationContent() {
             allClasses = await getClasses().catch(() => []);
           }
           
-          let myClasses = allClasses.filter(c => c.teacher_id === teacher.id);
+          let myClasses = allClasses.filter(c => 
+            c.class_teacher_id === teacher.id || 
+            (c.subject_teachers && c.subject_teachers.some(t => t.teacher_id === teacher.id))
+          );
+
           if (myClasses.length === 0 && teacher.assigned_classes && teacher.assigned_classes.length > 0) {
             myClasses = allClasses.filter(c => teacher.assigned_classes.includes(c.id));
           }
@@ -216,11 +220,26 @@ function CommunicationContent() {
 
   const filteredStudents = students.filter(s => s.name?.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const getClassId = () => role === 'teacher'
-    ? students.find(s => s.id === selectedStudent)?.class_id
+  const getClassId = () => role === 'teacher' 
+    ? (selectedStudent === 'staff_group' ? teacherData?.school_id + '_staff' : localStorage.getItem('teacher_class_id')) 
     : parentClassId;
   const getSchoolId = () => role === 'teacher' ? teacherData?.school_id : parentSchoolId;
-  const getSenderName = () => role === 'teacher' ? (teacherData?.name || 'Teacher') : parentStudentName;
+  const getSenderName = () => {
+    if (role === 'teacher') {
+      let name = teacherData?.name || 'Teacher';
+      if (selectedStudent !== 'staff_group') {
+        const teacherRole = localStorage.getItem('teacher_role');
+        const teacherSubject = localStorage.getItem('teacher_subject');
+        if (teacherRole === 'subject_teacher' && teacherSubject) {
+          name += ` (${teacherSubject})`;
+        } else if (teacherRole === 'class_teacher') {
+          name += ` (Class Teacher)`;
+        }
+      }
+      return name;
+    }
+    return parentStudentName;
+  };
 
   // Calculate latest messages and unread counts for sorting
   const chatList = filteredStudents.map(s => {
@@ -261,12 +280,11 @@ function CommunicationContent() {
     badge: role === 'parent' ? 'bg-purple-700' : 'bg-[#00a884]',
     badgeText: role === 'parent' ? 'text-purple-700' : 'text-[#00a884]',
   };
-
   return (
     <div className="h-screen flex flex-col bg-[#eae6df] font-sans">
       
       {/* Header — hidden on mobile when in a chat, but visible on desktop */}
-      <header className={`${themeColors.header} text-white flex-none z-10 shadow-sm ${selectedStudent && !fixedStudent ? 'hidden md:block' : 'block'}`}>
+      <header className={`${themeColors.header} text-white flex-none z-10 shadow-sm ${role === 'parent' ? 'hidden' : (selectedStudent && !fixedStudent ? 'hidden md:block' : 'block')}`}>
         <div className="h-[60px] px-4 flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
             <ArrowLeft className="w-5 h-5" />
@@ -281,7 +299,7 @@ function CommunicationContent() {
         <div className="w-full h-full bg-white md:rounded-xl shadow-lg flex overflow-hidden border border-slate-200">
           
           {/* LEFT PANE: Contacts List */}
-          <div className={`w-full md:w-[350px] lg:w-[400px] flex-none flex flex-col border-r border-slate-200 bg-white ${selectedStudent && !fixedStudent ? 'hidden md:flex' : 'flex'}`}>
+          <div className={`w-full md:w-[350px] lg:w-[400px] flex-none flex flex-col border-r border-slate-200 bg-white ${role === 'parent' ? 'hidden' : (selectedStudent && !fixedStudent ? 'hidden md:flex' : 'flex')}`}>
             
             {/* Search / Header for Contacts */}
             <div className="p-3 bg-[#f0f2f5] flex-none">
@@ -358,7 +376,7 @@ function CommunicationContent() {
           </div>
 
           {/* RIGHT PANE: Chat Area */}
-          <div className={`flex-1 flex flex-col bg-[#efeae2] relative ${!selectedStudent && !fixedStudent ? 'hidden md:flex' : 'flex'}`}
+          <div className={`flex-1 flex flex-col bg-[#efeae2] relative ${role === 'parent' ? 'flex' : (!selectedStudent && !fixedStudent ? 'hidden md:flex' : 'flex')}`}
                style={{ backgroundImage: 'url("/bg-chat-tile.jpg")', opacity: 0.95 }}>
             
             {selectedStudent ? (
@@ -366,8 +384,8 @@ function CommunicationContent() {
                 {/* Chat Header */}
                 <div className="h-[60px] bg-[#f0f2f5] px-4 flex items-center gap-3 border-b border-slate-200 z-10">
                   {/* Mobile Back Button inside Chat */}
-                  {!fixedStudent && (
-                    <button onClick={() => setSelectedStudent(null)} className="md:hidden p-1.5 -ml-2 rounded-full hover:bg-slate-200 text-slate-600">
+                  {(!fixedStudent || role === 'parent') && (
+                    <button onClick={() => role === 'parent' ? navigate(-1) : setSelectedStudent(null)} className="md:hidden p-1.5 -ml-2 rounded-full hover:bg-slate-200 text-slate-600">
                       <ArrowLeft className="w-5 h-5" />
                     </button>
                   )}

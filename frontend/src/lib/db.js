@@ -314,6 +314,11 @@ const saveClassToLocal = (schoolId, newClass, broadcast = true) => {
   if (broadcast) broadcastSync('SAVE_CLASS', newClass);
 };
 
+export const getClassesForTeacher = async (teacherId, schoolId) => {
+  const all = await getClasses(schoolId);
+  return all.filter(c => c.class_teacher_id === teacherId || (c.subject_teachers && c.subject_teachers.some(t => t.teacher_id === teacherId)));
+};
+
 export const getClasses = async (schoolId) => {
   const map = new Map();
 
@@ -1295,6 +1300,53 @@ export const resetAllLocalData = () => {
       }
     }
     keysToRemove.forEach(k => localStorage.removeItem(k));
+  }
+};
+
+export const updateTeacherAssignments = async (schoolId, teacherId, classTeacherClassId, subjectAssignments) => {
+  try {
+    let classes = await getClasses(schoolId);
+    if (!classes || classes.length === 0) classes = await getClasses();
+
+    for (const c of classes) {
+      let changed = false;
+      const updates = {};
+
+      // 1. Manage Class Teacher Role
+      if (c.class_teacher_id === teacherId && c.id !== classTeacherClassId) {
+        updates.class_teacher_id = '';
+        changed = true;
+      } else if (c.id === classTeacherClassId && c.class_teacher_id !== teacherId) {
+        updates.class_teacher_id = teacherId;
+        changed = true;
+      }
+
+      // 2. Manage Subject Teacher Roles
+      let stArray = Array.isArray(c.subject_teachers) ? [...c.subject_teachers] : [];
+      const originalLen = stArray.length;
+      stArray = stArray.filter(t => t.teacher_id !== teacherId);
+      
+      const matchingAssignments = subjectAssignments.filter(a => a.class_id === c.id);
+      if (matchingAssignments.length > 0) {
+        matchingAssignments.forEach(ma => {
+          if (ma.subject) {
+            stArray.push({ teacher_id: teacherId, subject: ma.subject });
+          }
+        });
+      }
+
+      if (originalLen !== stArray.length || matchingAssignments.length > 0) {
+        updates.subject_teachers = stArray;
+        changed = true;
+      }
+
+      if (changed) {
+        await updateClass(c.id, updates);
+      }
+    }
+  } catch (err) {
+    console.error('Error updating teacher assignments:', err);
+    throw err;
   }
 };
 

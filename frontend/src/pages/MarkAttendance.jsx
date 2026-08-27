@@ -7,6 +7,8 @@ import {
   getAttendanceByClassAndDate,
   saveAttendance,
   getClassById,
+  getTeacherByUserId,
+  getClasses,
 } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import {
@@ -50,13 +52,35 @@ function MarkAttendanceContent() {
   });
 
   useEffect(() => {
-    if (!classId) {
-      navigate(createPageUrl('TeacherDashboard'));
+    if (!authUser) {
+      navigate(createPageUrl('Login'));
       return;
     }
-    if (authUser) loadData();
-    else navigate(createPageUrl('Login'));
+    
+    if (!classId) {
+      const autoPickClass = async () => {
+        try {
+          const teacher = await getTeacherByUserId(authUser.uid);
+          if (teacher) {
+            const allCls = await getClasses();
+            const myCls = allCls.filter(c => c.teacher_id === teacher.id);
+            if (myCls.length > 0) {
+              navigate(createPageUrl('MarkAttendance') + '?classId=' + myCls[0].id, { replace: true });
+              return;
+            }
+          }
+          navigate(createPageUrl('TeacherDashboard'));
+        } catch (err) {
+          navigate(createPageUrl('TeacherDashboard'));
+        }
+      };
+      autoPickClass();
+      return;
+    }
+    
+    loadData();
   }, [classId, authUser]);
+
 
   const loadData = async () => {
     setLoading(true);

@@ -56,34 +56,22 @@ export default function SelectClasses() {
         classData = await getClasses(teacherData.school_id).catch(() => []);
       }
 
-      // 2. If still empty, fetch ALL classes without a filter (hits Firestore + all local keys)
+      // 2. If still empty, try to get from db (which might fallback)
       if (!classData || classData.length === 0) {
         classData = await getClasses().catch(() => []);
       }
 
-      // 3. Always supplement with every classes_* key in localStorage to catch any ID mismatch
-      const localMap = new Map((classData || []).map(c => [c.id, c]));
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('classes_')) {
-          try {
-            const list = JSON.parse(localStorage.getItem(key));
-            if (Array.isArray(list)) list.forEach(c => localMap.set(c.id, c));
-          } catch (e) {}
-        }
+      // 3. Filter classes that actually belong to the teacher's school
+      if (teacherData?.school_id && classData && classData.length > 0) {
+        classData = classData.filter(c => c.school_id === teacherData.school_id);
       }
-      // Also check all_local_classes
-      try {
-        const allLocal = localStorage.getItem('all_local_classes');
-        if (allLocal) JSON.parse(allLocal).forEach(c => localMap.set(c.id, c));
-      } catch (e) {}
 
-      classData = Array.from(localMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      classData = (classData || []).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
       setClasses(classData || []);
 
       const alreadyAssigned = (classData || [])
-        .filter(c => c.teacher_id === teacherData?.id)
+        .filter(c => c.class_teacher_id === teacherData?.id || c.teacher_id === teacherData?.id || (c.subject_teachers && c.subject_teachers.some(st => st.teacher_id === teacherData?.id)))
         .map(c => c.id);
       setSelected(alreadyAssigned);
     } catch (err) {
@@ -104,10 +92,11 @@ export default function SelectClasses() {
       await Promise.all(
         classes.map(cls => {
           if (selected.includes(cls.id)) {
-            return updateClass(cls.id, { teacher_id: teacher.id, teacher_name: teacher.name });
-          } else if (cls.teacher_id === teacher.id) {
+            // Keep teacher_id for backwards compatibility but also set class_teacher_id
+            return updateClass(cls.id, { class_teacher_id: teacher.id, teacher_id: teacher.id, teacher_name: teacher.name });
+          } else if (cls.class_teacher_id === teacher.id || cls.teacher_id === teacher.id) {
             // Deselected — remove assignment
-            return updateClass(cls.id, { teacher_id: null, teacher_name: null });
+            return updateClass(cls.id, { class_teacher_id: '', teacher_id: null, teacher_name: null });
           }
           return Promise.resolve();
         })

@@ -57,6 +57,36 @@ export default function DashboardSidebar({
   // Define nav sections based on role
   const getNavSections = () => {
     if (role === 'teacher') {
+      const isSubjectTeacher = localStorage.getItem('teacher_role') === 'subject_teacher';
+
+      if (isSubjectTeacher) {
+        return [
+          {
+            title: 'Subject Teacher Portal',
+            items: [
+              {
+                label: 'Messages',
+                path: createPageUrl('Communication'),
+                icon: MessageSquare,
+                badge: unreadMessages > 0 ? (unreadMessages > 9 ? '9+' : unreadMessages) : null,
+                badgeColor: 'bg-emerald-500 text-white',
+                primary: true,
+              },
+              {
+                label: 'Homework',
+                path: createPageUrl('Homework'),
+                icon: BookCopy,
+              },
+              {
+                label: 'Enter Marks',
+                path: `${createPageUrl('EnterMarks')}${selectedClassId ? `?classId=${selectedClassId}` : ''}`,
+                icon: FileText,
+              },
+            ],
+          },
+        ];
+      }
+
       return [
         {
           title: 'Core Actions',

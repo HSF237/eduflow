@@ -7,6 +7,7 @@ import {
   getTeachers,
   getClasses,
   deleteTeacher,
+  updateTeacherAssignments,
 } from '@/lib/db';
 import {
   ArrowLeft,
@@ -22,6 +23,7 @@ import {
   Share2,
   Sparkles,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 
@@ -38,6 +40,42 @@ export default function ManageTeachers() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [deletingTeacher, setDeletingTeacher] = useState(null);
+
+  const [rolesTeacher, setRolesTeacher] = useState(null);
+  const [rolesClassTeacherId, setRolesClassTeacherId] = useState('');
+  const [rolesSubjectAssignments, setRolesSubjectAssignments] = useState([]);
+  const [savingRoles, setSavingRoles] = useState(false);
+
+  const handleOpenRoles = (t) => {
+    setRolesTeacher(t);
+    const ctClass = classes.find(c => c.class_teacher_id === t.id);
+    setRolesClassTeacherId(ctClass ? ctClass.id : '');
+    const sa = [];
+    classes.forEach(c => {
+      if (Array.isArray(c.subject_teachers)) {
+        c.subject_teachers.forEach(st => {
+          if (st.teacher_id === t.id && st.subject) {
+            sa.push({ class_id: c.id, subject: st.subject, _key: Math.random() });
+          }
+        });
+      }
+    });
+    setRolesSubjectAssignments(sa);
+  };
+
+  const handleSaveRoles = async (e) => {
+    e.preventDefault();
+    setSavingRoles(true);
+    try {
+      await updateTeacherAssignments(school.id, rolesTeacher.id, rolesClassTeacherId, rolesSubjectAssignments);
+      setRolesTeacher(null);
+      load(authUser);
+    } catch (err) {
+      alert('Error updating roles');
+    }
+    setSavingRoles(false);
+  };
+
 
   useEffect(() => {
     if (!isLoadingAuth) loadData(authUser);
@@ -296,6 +334,126 @@ export default function ManageTeachers() {
             </div>
           </div>
         </main>
+
+        
+        {/* Manage Roles Modal */}
+        {rolesTeacher && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 className="text-lg font-semibold text-slate-900">Manage Roles: {rolesTeacher.name}</h3>
+                <button onClick={() => setRolesTeacher(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto flex-1">
+                <form id="rolesForm" onSubmit={handleSaveRoles} className="space-y-6">
+                  {/* Class Teacher */}
+                  <div className="space-y-3 pb-6 border-b border-slate-100">
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-900">Class Teacher Role</h4>
+                      <p className="text-xs text-slate-500 mt-1">Select the primary class this teacher is responsible for.</p>
+                    </div>
+                    <select 
+                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none"
+                      value={rolesClassTeacherId}
+                      onChange={e => setRolesClassTeacherId(e.target.value)}
+                    >
+                      <option value="">-- None --</option>
+                      {classes.map(c => (
+                        <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Subject Teacher */}
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-900">Subject Teacher Roles</h4>
+                      <p className="text-xs text-slate-500 mt-1">Assign this teacher to specific subjects across multiple classes.</p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {rolesSubjectAssignments.map((assignment, index) => (
+                        <div key={assignment._key || index} className="flex gap-2 items-center group">
+                          <select 
+                            className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            value={assignment.class_id}
+                            onChange={e => {
+                              const newArr = [...rolesSubjectAssignments];
+                              newArr[index].class_id = e.target.value;
+                              setRolesSubjectAssignments(newArr);
+                            }}
+                            required
+                          >
+                            <option value="">Select Class...</option>
+                            {classes.map(c => (
+                              <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                            ))}
+                          </select>
+                          
+                          <input 
+                            type="text"
+                            className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                            placeholder="Subject (e.g. English)"
+                            value={assignment.subject}
+                            onChange={e => {
+                              const newArr = [...rolesSubjectAssignments];
+                              newArr[index].subject = e.target.value;
+                              setRolesSubjectAssignments(newArr);
+                            }}
+                            required
+                          />
+                          
+                          <button 
+                            type="button"
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                            onClick={() => {
+                              const newArr = [...rolesSubjectAssignments];
+                              newArr.splice(index, 1);
+                              setRolesSubjectAssignments(newArr);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors mt-2"
+                      onClick={() => setRolesSubjectAssignments([...rolesSubjectAssignments, { class_id: '', subject: '', _key: Math.random() }])}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      Add Subject Assignment
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setRolesTeacher(null)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  form="rolesForm"
+                  disabled={savingRoles}
+                  className="inline-flex items-center gap-2 px-6 py-2 bg-[#00a884] text-white text-sm font-medium rounded-lg hover:bg-[#008f6f] transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {savingRoles && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Save Roles
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Invite Teacher Modal */}
         {inviteModalOpen && (

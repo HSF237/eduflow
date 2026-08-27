@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import DashboardSidebar from './DashboardSidebar';
-import FloatingMessageButton from './FloatingMessageButton';
+
+import MobileBottomNav from './MobileBottomNav';
 import { Menu, Sparkles } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 
@@ -36,6 +38,8 @@ export default function AppLayout({ children, title }) {
     role = authUser.role.toLowerCase();
   }
 
+  const { data: unreadCount = 0 } = useUnreadMessages(role);
+
   const handleLogout = () => {
     if (logout) logout();
     navigate(createPageUrl('RoleSelection'));
@@ -49,11 +53,12 @@ export default function AppLayout({ children, title }) {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         teacherName={authUser?.displayName || authUser?.email || ''}
+        unreadMessages={unreadCount}
         onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col pb-24 lg:pb-0">
         {/* Mobile Header with 3-Line Menu Button */}
         <header className="lg:hidden bg-slate-900 text-white px-4 py-3 sticky top-0 z-20 flex items-center justify-between shadow-md">
           <div className="flex items-center gap-3">
@@ -77,7 +82,8 @@ export default function AppLayout({ children, title }) {
           {children}
         </div>
       </div>
-      <FloatingMessageButton />
+      
+      <MobileBottomNav role={role} />
     </div>
   );
 }

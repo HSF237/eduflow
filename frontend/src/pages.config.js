@@ -35,6 +35,7 @@ export const PAGES = {
   "Reports": lazy(() => import('./pages/Reports')),
   "Register": lazy(() => import('./pages/Register')),
   "ReportCard": lazy(() => import('./pages/ReportCard')),
+  "Seed": lazy(() => import('./pages/Seed')),
   "StudentProgress": lazy(() => import('./pages/StudentProgress')),
   "ReviewLeave": lazy(() => import('./pages/ReviewLeave')),
   "RoleSelection": lazy(() => import('./pages/RoleSelection')),

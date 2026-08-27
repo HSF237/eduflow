@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/AuthContext';
-import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, getAttendanceByClass, createClass, createStudent } from '@/lib/db';
+import { getSchoolByPrincipal, getClasses, getStudents, getTeachers, getTodayAttendanceSummary, getAttendanceByClass, createClass, createStudent, updateTeacherAssignments } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import MobileBottomNav from '@/components/MobileBottomNav';
 import { DashboardSkeleton } from '@/components/ui/SkeletonLoaders';
 import {
   Users, BookOpen, UserCog, Clock, CheckCircle,
@@ -27,6 +28,11 @@ export default function PrincipalDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [copied, setCopied] = useState(false);
   const [showAddClass, setShowAddClass] = useState(false);
+
+  const [rolesTeacher, setRolesTeacher] = useState(null);
+  const [rolesClassTeacherId, setRolesClassTeacherId] = useState('');
+  const [rolesSubjectAssignments, setRolesSubjectAssignments] = useState([]);
+
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [classForm, setClassForm] = useState({ name: '', section: '' });
   const [studentForm, setStudentForm] = useState({ name: '', roll_number: '', admission_number: '', class_id: '', parent_name: '' });
@@ -91,6 +97,37 @@ export default function PrincipalDashboard() {
       await createClass({ ...classForm, school_id: school.id });
       setShowAddClass(false); setClassForm({ name: '', section: '' }); load();
     } catch (err) { alert('Error creating class'); }
+    setSaving(false);
+  };
+
+  
+  const handleOpenRoles = (t) => {
+    setRolesTeacher(t);
+    const ctClass = classes.find(c => c.class_teacher_id === t.id);
+    setRolesClassTeacherId(ctClass ? ctClass.id : '');
+    const sa = [];
+    classes.forEach(c => {
+      if (Array.isArray(c.subject_teachers)) {
+        c.subject_teachers.forEach(st => {
+          if (st.teacher_id === t.id && st.subject) {
+            sa.push({ class_id: c.id, subject: st.subject, _key: Math.random() });
+          }
+        });
+      }
+    });
+    setRolesSubjectAssignments(sa);
+  };
+
+  const handleSaveRoles = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await updateTeacherAssignments(school.id, rolesTeacher.id, rolesClassTeacherId, rolesSubjectAssignments);
+      setRolesTeacher(null);
+      load();
+    } catch (err) {
+      alert('Error updating roles');
+    }
     setSaving(false);
   };
 
@@ -316,7 +353,93 @@ export default function PrincipalDashboard() {
         )}
       </div>
 
-      {/* Add Class Modal */}
+      
+        {/* Manage Roles Modal */}
+        {rolesTeacher && (
+          <Modal title={`Manage Roles: ${rolesTeacher.name}`} onClose={() => setRolesTeacher(null)}>
+            <form onSubmit={handleSaveRoles} className="space-y-6">
+              
+              {/* Class Teacher */}
+              <div className="space-y-2 border-b border-slate-100 pb-4">
+                <h3 className="font-medium text-slate-900 text-sm">Class Teacher Role</h3>
+                <p className="text-xs text-slate-500 mb-2">Select the primary class this teacher is responsible for.</p>
+                <select 
+                  className="w-full p-2 border border-slate-200 rounded-lg text-sm"
+                  value={rolesClassTeacherId}
+                  onChange={e => setRolesClassTeacherId(e.target.value)}
+                >
+                  <option value="">-- None --</option>
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Subject Teacher */}
+              <div className="space-y-3">
+                <h3 className="font-medium text-slate-900 text-sm">Subject Teacher Roles</h3>
+                <p className="text-xs text-slate-500 mb-2">Assign this teacher to specific subjects across multiple classes.</p>
+                
+                {rolesSubjectAssignments.map((assignment, index) => (
+                  <div key={assignment._key || index} className="flex gap-2 items-center">
+                    <select 
+                      className="flex-1 p-2 border border-slate-200 rounded-lg text-sm"
+                      value={assignment.class_id}
+                      onChange={e => {
+                        const newArr = [...rolesSubjectAssignments];
+                        newArr[index].class_id = e.target.value;
+                        setRolesSubjectAssignments(newArr);
+                      }}
+                      required
+                    >
+                      <option value="">Select Class...</option>
+                      {classes.map(c => (
+                        <option key={c.id} value={c.id}>{c.name} {c.section}</option>
+                      ))}
+                    </select>
+                    
+                    <input 
+                      type="text"
+                      className="flex-1 p-2 border border-slate-200 rounded-lg text-sm"
+                      placeholder="Subject (e.g. English)"
+                      value={assignment.subject}
+                      onChange={e => {
+                        const newArr = [...rolesSubjectAssignments];
+                        newArr[index].subject = e.target.value;
+                        setRolesSubjectAssignments(newArr);
+                      }}
+                      required
+                    />
+                    
+                    <button 
+                      type="button"
+                      className="p-2 text-slate-400 hover:text-red-500"
+                      onClick={() => {
+                        const newArr = [...rolesSubjectAssignments];
+                        newArr.splice(index, 1);
+                        setRolesSubjectAssignments(newArr);
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                  onClick={() => setRolesSubjectAssignments([...rolesSubjectAssignments, { class_id: '', subject: '', _key: Math.random() }])}
+                >
+                  + Add Subject Assignment
+                </button>
+              </div>
+
+              <ModalButtons onCancel={() => setRolesTeacher(null)} saving={saving} label="Save Roles" />
+            </form>
+          </Modal>
+        )}
+
+        {/* Add Class Modal */}
       {showAddClass && (
         <Modal title="Add Class" onClose={() => setShowAddClass(false)}>
           <form onSubmit={handleAddClass} className="space-y-4">
@@ -350,6 +473,7 @@ export default function PrincipalDashboard() {
         </Modal>
       )}
       </div>
+      <MobileBottomNav role="principal" />
     </div>
   );
 }

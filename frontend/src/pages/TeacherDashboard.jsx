@@ -10,6 +10,8 @@ import {
 } from '@/lib/db';
 import { createPageUrl } from '@/utils';
 import DashboardSidebar from '@/components/DashboardSidebar';
+import MobileBottomNav from '@/components/MobileBottomNav';
+
 import { DashboardSkeleton } from '@/components/ui/SkeletonLoaders';
 import {
   GraduationCap, Bell, Settings, LogOut, Users, Clock, BookOpen,
@@ -36,10 +38,23 @@ export default function TeacherDashboard() {
   }, [isLoadingAuth, authUser]);
 
   useEffect(() => {
-    if (selectedClassId) {
+    if (selectedClassId && teacher) {
       loadClassData(selectedClassId);
+      
+      const sc = classes.find(c => c.id === selectedClassId);
+      if (sc) {
+        localStorage.setItem('teacher_class_id', selectedClassId);
+        const isClassTeacher = sc.class_teacher_id === teacher.id;
+        const subjTeacher = sc.subject_teachers?.find(t => t.teacher_id === teacher.id);
+        localStorage.setItem('teacher_role', isClassTeacher ? 'class_teacher' : 'subject_teacher');
+        if (subjTeacher) {
+          localStorage.setItem('teacher_subject', subjTeacher.subject);
+        } else {
+          localStorage.removeItem('teacher_subject');
+        }
+      }
     }
-  }, [selectedClassId]);
+  }, [selectedClassId, teacher, classes]);
 
   const load = async (user) => {
     try {
@@ -73,8 +88,11 @@ export default function TeacherDashboard() {
         allClasses = await getClasses().catch(() => []);
       }
 
-      // Filter by teacher_id first
-      let myClasses = allClasses.filter((c) => c.teacher_id === teacherData.id);
+      // Filter by class_teacher_id OR subject_teachers
+      let myClasses = allClasses.filter(c => 
+        c.class_teacher_id === teacherData.id || 
+        (c.subject_teachers && c.subject_teachers.some(t => t.teacher_id === teacherData.id))
+      );
 
       // Fallback: check assigned_classes array stored on the teacher doc
       if (myClasses.length === 0 && teacherData.assigned_classes && teacherData.assigned_classes.length > 0) {
@@ -443,6 +461,7 @@ export default function TeacherDashboard() {
         </div>
       </div>
     </div>
+    <MobileBottomNav role="teacher" />
     </div>
   );
 }

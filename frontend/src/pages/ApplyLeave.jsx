@@ -45,7 +45,20 @@ export default function ApplyLeave() {
         getLeavesByClass(classId),
       ]);
       setClassInfo(cls);
-      const sorted = studs.slice().sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
+      
+      let parentStudents = [];
+      const linkedStr = localStorage.getItem('parent_linked_students');
+      if (linkedStr) {
+        try {
+          parentStudents = JSON.parse(linkedStr);
+        } catch (e) {
+          parentStudents = studs.filter(s => s.id === parentStudentId);
+        }
+      } else {
+        parentStudents = studs.filter(s => s.id === parentStudentId);
+      }
+      
+      const sorted = parentStudents.slice().sort((a, b) => (parseInt(a.roll_number) || 0) - (parseInt(b.roll_number) || 0));
       setStudents(sorted);
       setLeaves(leavesData.slice().sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0)));
       const defaultStudent = parentStudentId || (sorted.length === 1 ? sorted[0].id : '');
